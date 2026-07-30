@@ -26,10 +26,10 @@ Không đặt API key AI trong biến môi trường frontend.
 
 ## API contract
 
-- `GET /api/materials/:materialId`
-- `POST /api/tutor/turns`
-- `POST /api/tutor/quiz`
-- `POST /api/tutor/declines`
+- `GET /api/v1/materials/:materialId`
+- `POST /api/v1/tutor/turns`
+- `POST /api/v1/tutor/quiz`
+- `POST /api/v1/tutor/declines`
 
 Chi tiết payload nằm trong `src/types.ts`. Response được kiểm tra tại
 `src/core.ts`; mind map hoặc quiz có citation ngoài `sourceIds` sẽ không được

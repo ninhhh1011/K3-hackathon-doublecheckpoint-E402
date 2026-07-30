@@ -164,8 +164,8 @@ python -m uvicorn main:app --reload
 
 Sau do chay frontend tu `codebase/fe` bang `npm.cmd run dev` va mo
 `http://127.0.0.1:5173/`. Backend phuc vu metadata tai
-`/api/materials/demo-slides` va PDF tai
-`/api/materials/demo-slides/document`.
+`/api/v1/materials/demo-slides` va PDF tai
+`/api/v1/materials/demo-slides/document`.
 
 Co 3 cach chay:
 

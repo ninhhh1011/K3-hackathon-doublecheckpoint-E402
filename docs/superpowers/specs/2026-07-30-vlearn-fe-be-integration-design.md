@@ -8,7 +8,7 @@ repository's `demo-slides.pdf` as the default review document.
 ## Architecture
 
 - FastAPI remains the source of truth for material metadata and document bytes.
-- `GET /api/materials/demo-slides` returns metadata whose `documentUrl` points to
+- `GET /api/v1/materials/demo-slides` returns metadata whose `documentUrl` points to
   a FastAPI PDF endpoint.
 - The PDF endpoint streams `demo-slides.pdf` from the repository root with
   `application/pdf`; unknown material IDs return `404`.
@@ -19,11 +19,11 @@ repository's `demo-slides.pdf` as the default review document.
 ## Data flow
 
 1. The browser opens the frontend.
-2. The frontend requests `GET /api/materials/demo-slides`.
+2. The frontend requests `GET /api/v1/materials/demo-slides`.
 3. FastAPI validates the material ID and returns title, course code, page
    metadata, source IDs, and the PDF URL.
 4. Reader embeds the returned PDF URL.
-5. Tutor requests continue to use the existing `/api/tutor/*` endpoints and the
+5. Tutor requests continue to use the existing `/api/v1/tutor/*` endpoints and the
    material context returned by the backend.
 
 ## Error handling

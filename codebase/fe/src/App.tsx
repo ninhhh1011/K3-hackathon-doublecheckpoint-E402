@@ -28,10 +28,6 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(false);
 
   useEffect(() => {
-    if (!materialId) {
-      return;
-    }
-
     let active = true;
     api
       .loadMaterial(materialId)

@@ -13,7 +13,7 @@ from src.models.schemas import (
     TutorTurnResponse,
 )
 
-router = APIRouter(prefix="/api", tags=["tutor"])
+router = APIRouter(tags=["tutor"])
 PROJECT_ROOT = Path(__file__).resolve().parents[5]
 DEMO_MATERIAL_ID = "demo-slides"
 DEMO_DOCUMENT = PROJECT_ROOT / "demo-slides.pdf"

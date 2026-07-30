@@ -5,6 +5,15 @@ import Reader from "./components/Reader";
 import Tutor from "./components/Tutor";
 import type { Material } from "./types";
 
+const DEMO_MATERIAL: Material = {
+  id: "demo-material",
+  title: "Tai lieu hoc tap demo",
+  courseCode: "VINAI-101",
+  pageNumber: 1,
+  pageCount: 12,
+  sourceIds: ["SRC-001", "SRC-002", "SRC-003"],
+};
+
 function queryMaterialId(): string {
   if (typeof window === "undefined") {
     return "";
@@ -18,7 +27,9 @@ export default function App() {
     [],
   );
   const materialId = useMemo(queryMaterialId, []);
-  const [material, setMaterial] = useState<Material | null>(null);
+  const [material, setMaterial] = useState<Material | null>(
+    materialId ? null : DEMO_MATERIAL,
+  );
   const [loading, setLoading] = useState(Boolean(materialId));
   const [loadError, setLoadError] = useState<string | null>(null);
   const [tutorOpen, setTutorOpen] = useState(true);
@@ -26,6 +37,9 @@ export default function App() {
 
   useEffect(() => {
     if (!materialId) {
+      setMaterial(DEMO_MATERIAL);
+      setLoadError(null);
+      setLoading(false);
       return;
     }
 

@@ -57,7 +57,7 @@ describe("apiClient", () => {
     const client = createApiClient("https://api.example.test", fetcher);
     const response = await client.sendTurn(turnRequest);
 
-    expect(requestUrl).toBe("https://api.example.test/api/tutor/turns");
+    expect(requestUrl).toBe("https://api.example.test/api/v1/tutor/turns");
     expect(JSON.parse(requestBody)).toEqual(turnRequest);
     expect(response.nextAction).toBe("quiz_suggested");
   });
@@ -104,7 +104,7 @@ describe("apiClient", () => {
     };
     await client.declineQuiz(decline);
 
-    expect(requestUrl).toBe("https://api.example.test/api/tutor/declines");
+    expect(requestUrl).toBe("https://api.example.test/api/v1/tutor/declines");
     expect(JSON.parse(requestBody)).toEqual(decline);
   });
 });

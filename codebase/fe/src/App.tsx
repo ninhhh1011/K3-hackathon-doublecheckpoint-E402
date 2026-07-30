@@ -5,11 +5,14 @@ import Reader from "./components/Reader";
 import Tutor from "./components/Tutor";
 import type { Material } from "./types";
 
+export function resolveMaterialId(search: string): string {
+  return new URLSearchParams(search).get("materialId")?.trim() || "demo-slides";
+}
+
 function queryMaterialId(): string {
-  if (typeof window === "undefined") {
-    return "";
-  }
-  return new URLSearchParams(window.location.search).get("materialId") ?? "";
+  return resolveMaterialId(
+    typeof window === "undefined" ? "" : window.location.search,
+  );
 }
 
 export default function App() {

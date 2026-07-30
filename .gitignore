@@ -4,3 +4,4 @@ codebase/fe/dist/
 codebase/fe/coverage/
 *.env
 data/
+.worktrees/

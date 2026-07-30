@@ -1,265 +1,94 @@
 # VinAIAction Backend
 
-Backend `be` duoc xay dung voi FastAPI, theo cau truc tach lop de sau nay de mo rong sang agent thuc te, OpenAI client, LangGraph, logging, va test.
+Backend `be` hien duoc chinh lai theo huong mot API chat duy nhat cho nguoi dung: `POST /api/v1/chat`.
 
-Trang thai hien tai:
-- Da co bo khung FastAPI theo `src/api`, `src/core`, `src/models`, `src/agent`
-- Da co `health check` endpoint
-- Da co `chat` endpoint de test luong request/response
-- Da co `Settings` load tu `.env`
-- Da co test tich hop co ban cho `/health`
-- Chua noi OpenAI that trong source hien tai, service chat dang la placeholder
+## Trang thai hien tai
 
-## Cau truc thu muc
+- Chi con mot chat API trung tam cho VLearn Tutor
+- Ho tro 2 che do tra ve:
+  - JSON thong thuong khi `stream=false`
+  - `text/event-stream` khi `stream=true`
+- Validation request duoc dinh nghia trong Pydantic schema
+- Neu client gui sai format, FastAPI tu dong tra `422` cung chi tiet loi
+- Material metadata van co the lay qua `GET /api/v1/materials/{material_id}`
 
-```text
-be/
-|-- main.py
-|-- pyproject.toml
-|-- requirements.txt
-|-- src/
-|   |-- agent/
-|   |   |-- __init__.py
-|   |   `-- service.py
-|   |-- api/
-|   |   |-- __init__.py
-|   |   |-- deps.py
-|   |   `-- routes/
-|   |       |-- __init__.py
-|   |       |-- chat.py
-|   |       `-- health.py
-|   |-- core/
-|   |   |-- __init__.py
-|   |   |-- config.py
-|   |   `-- logging.py
-|   `-- models/
-|       |-- __init__.py
-|       `-- schemas.py
-`-- tests/
-    `-- integration/
-        `-- test_health.py
-|-- main.py
-```
+## API chinh
 
-## Chuc nang hien tai
+### `POST /api/v1/chat`
 
-### 1. Health check
-
-Kiem tra backend da khoi dong thanh cong:
-
-- `GET /`
-- `GET /health`
-
-Response mau:
+Request body mau:
 
 ```json
 {
-  "status": "healthy",
-  "version": "0.1.0",
-  "environment": "development"
+  "message": "Giai thich bieu do nay",
+  "conversation_id": "conv-001",
+  "stream": false,
+  "material_id": "demo-material",
+  "page_number": 4,
+  "source_ids": ["SRC-004"],
+  "selected_text": "Scaled dot-product attention...",
+  "contexts": [
+    {
+      "type": "text",
+      "page_number": 4,
+      "text": "Scaled dot-product attention computes softmax(QK^T / sqrt(dk)) V."
+    }
+  ]
 }
 ```
 
-### 2. Chat API
-
-Endpoint:
-
-- `POST /api/v1/chat`
-
-Request body:
+JSON response mau:
 
 ```json
 {
-  "message": "Xin chao",
+  "response": "Day la cau tra loi cua VLearn Tutor...",
   "conversation_id": "conv-001",
-  "stream": false
-}
-```
-
-Response hien tai:
-
-```json
-{
-  "response": "Received: Xin chao",
-  "conversation_id": "conv-001",
-  "sources": [],
+  "sources": ["SRC-004"],
+  "trace": [
+    {
+      "type": "node_start",
+      "node_name": "router_planner",
+      "payload": {
+        "question": "Giai thich bieu do nay",
+        "page_number": 4,
+        "has_image_context": false
+      }
+    }
+  ],
   "timestamp": "2026-07-30T00:00:00Z"
 }
 ```
 
-Luu y: response tren duoc tao boi `AgentService` dang o dang placeholder. No chua goi OpenAI API.
+Streaming response mau:
 
-## Moi truong yeu cau
+```text
+event: trace
+data: {"type":"node_start","node_name":"router_planner","payload":{"question":"..."}}
 
-- Python `3.11+`
-- Khuyen nghi dung virtual environment
+event: message_delta
+data: {"delta":"Minh da nhan duoc ..."}
 
-Kiem tra version:
-
-```bash
-python --version
+event: final
+data: {"response":"...","conversation_id":"...","sources":[],"trace":[],"timestamp":"..."}
 ```
 
-## Cai dat
+## Validation
 
-Tu thu muc `codebase/be`:
+Khong validate thu cong trong route handler.
 
-```bash
-python -m venv .venv
-```
+- Rang buoc do dai, `page_number >= 1`, va format context nam trong `src/models/schemas.py`
+- Request sai se duoc FastAPI/Pydantic tra `422 Unprocessable Entity`
 
-Kich hoat moi truong:
-
-Windows PowerShell:
-
-```powershell
-.venv\Scripts\Activate.ps1
-```
-
-macOS/Linux:
-
-```bash
-source .venv/bin/activate
-```
-
-Cai dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
-Hoac cai theo `pyproject.toml`:
-
-```bash
-pip install -e ".[dev]"
-```
-
-## Cau hinh `.env`
-
-File `.env` hien tai can it nhat:
-
-```env
-OPENAI_API_KEY=your_openai_api_key
-```
-
-Trong source hien tai, `OPENAI_API_KEY` da duoc khai bao trong `src/core/config.py`, san sang cho buoc tich hop OpenAI sau.
-
-Neu muon mo rong them, co the them cac bien sau:
-
-```env
-APP_NAME=VinAIAction API
-APP_VERSION=0.1.0
-APP_ENV=development
-LOG_LEVEL=INFO
-API_PREFIX=/api/v1
-```
-
-## Chay du an
-
-Co 3 cach chay:
-
-### Cach 1. Dung FastAPI CLI
-
-```bash
-fastapi dev
-```
-
-Vi `pyproject.toml` da khai bao:
-
-```toml
-[tool.fastapi]
-entrypoint = "src.api.main:app"
-```
-
-### Cach 2. Dung uvicorn
-
-```bash
-uvicorn src:app --reload
-```
-
-### Cach 3. Dung entrypoint tuong thich
-
-```bash
-uvicorn main:app --reload
-```
-
-## API Docs
-
-Sau khi chay server, mo:
-
-- `http://127.0.0.1:8000/docs`
-- `http://127.0.0.1:8000/redoc`
-
-## Chay test
-
-Chay toan bo test:
-
-```bash
-pytest
-```
-
-Chay rieng test health:
-
-```bash
-pytest tests/integration/test_health.py -q
-```
-
-## Mo ta cac thanh phan chinh
-
-### `src/api/main.py`
-
-Noi tao `FastAPI app`, cau hinh `lifespan`, `CORS`, va dang ky routers.
-
-### `src/api/routes/health.py`
-
-Chua 2 endpoint:
-- `/`
-- `/health`
-
-### `src/api/routes/chat.py`
-
-Chua endpoint `POST /api/v1/chat`.
-
-### `src/api/deps.py`
-
-Quan ly dependency injection cho `AgentService`.
-
-### `src/agent/service.py`
-
-Service tam thoi cho agent. Hien tai chi tra lai message da nhan de test backend flow.
-
-### `src/core/config.py`
-
-Noi khai bao `Settings` bang `pydantic-settings`, doc cau hinh tu file `.env`.
-
-### `src/models/schemas.py`
-
-Chua cac schema:
-- `ChatRequest`
-- `ChatResponse`
-- `HealthResponse`
-
-## Huong mo rong tiep theo
-
-Backend nay da san sang cho cac buoc tiep theo:
-
-1. Them OpenAI client rieng, vi du `src/agent/openai_client.py`
-2. Thay logic placeholder trong `AgentService` bang loi goi OpenAI that
-3. Them streaming endpoint neu can chat realtime
-4. Them error handling, auth, logging request, va rate limit
-5. Them unit test cho `AgentService` va integration test cho `/api/v1/chat`
-6. Tach `agent` thanh `graph.py`, `state.py`, `nodes.py`, `tools.py` neu ban se dung LangGraph
-
-## Luu y
-
-- File `main.py` o root chi la entrypoint tuong thich, app chinh nam o `src/api/main.py`
-- `requirements.txt` da bao gom thu vien `openai`, nhung source chua goi OpenAI that
-- Neu ban muon chuyen sang agent that, nen tao them abstraction cho provider thay vi goi truc tiep trong route
-
-## Lenh nhanh
+## Chay nhanh
 
 ```bash
 pip install -r requirements.txt
 fastapi dev
 pytest
 ```
+
+## Tai lieu ky thuat
+
+Bo spec chi tiet cho multi-model VLearn Tutor nam tai:
+
+`be/docs/vlearn_tutor_agent_spec.md`

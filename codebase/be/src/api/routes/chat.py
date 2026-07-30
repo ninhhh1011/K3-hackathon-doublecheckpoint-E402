@@ -1,29 +1,38 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 
 from src.api.deps import AgentServiceDep
-from src.models.schemas import ChatRequest, ChatResponse
-from src.core.logging import logger
+from src.models.schemas import ChatRequest, ChatResponse, MaterialResponse
 
-router = APIRouter(prefix="/chat", tags=["chat"])
+router = APIRouter(tags=["chat"])
 
 
-@router.post("", response_model=ChatResponse)
-async def create_chat(payload: ChatRequest, agent_service: AgentServiceDep) -> ChatResponse:
-    try:
-        logger.info(
-            "Received chat request: conversation_id=%s, message_length=%s",
-            payload.conversation_id,
-            len(payload.message),
+@router.get("/materials/{material_id}", response_model=MaterialResponse)
+async def get_material(material_id: str, agent_service: AgentServiceDep) -> MaterialResponse:
+    return await agent_service.get_material(material_id)
+
+
+@router.post(
+    "/chat",
+    response_model=ChatResponse,
+    responses={
+        200: {
+            "description": "Returns JSON when stream=false, or SSE events when stream=true.",
+            "content": {
+                "application/json": {},
+                "text/event-stream": {},
+            },
+        }
+    },
+)
+async def create_chat(payload: ChatRequest, agent_service: AgentServiceDep):
+    if payload.stream:
+        return StreamingResponse(
+            agent_service.stream_chat(payload),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
         )
-        response = await agent_service.chat(payload)
-        logger.info("Generated response for conversation_id=%s", response.conversation_id)
-        return response
-    except HTTPException:
-        raise
-    except Exception:
-        logger.exception("Error processing chat request")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to process chat request.",
-        )
-
+    return await agent_service.chat(payload)

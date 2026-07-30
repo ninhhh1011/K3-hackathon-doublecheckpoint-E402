@@ -1,0 +1,49 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: vlearn-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+
+    ports:
+      - "${DB_EXPOSE_PORT:-6666}:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # api:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+
+  #   container_name: vlearn-api
+  #   restart: unless-stopped
+
+  #   env_file:
+  #     - .env
+
+  #   environment:
+  #     DB_HOST: db
+  #     DB_PORT: 5432
+  #     DB_CHECK_ON_STARTUP: "true"
+
+  #   ports:
+  #     - "${API_PORT:-8000}:8000"
+
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+
+volumes:
+  postgres_data:

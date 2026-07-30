@@ -10,7 +10,7 @@ from src.models.schemas import (
     TutorTurnResponse,
 )
 
-router = APIRouter(prefix="/api", tags=["tutor"])
+router = APIRouter(tags=["tutor"])
 
 
 @router.get("/materials/{material_id}", response_model=MaterialResponse)

@@ -8,3 +8,12 @@ httpx
 pytest
 pytest-asyncio
 ruff
+langchain 
+langchain-openai
+deepagents
+docling
+psycopg
+pgvector
+sentence-transformers
+numpy
+pandas

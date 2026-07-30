@@ -56,6 +56,16 @@ def clean_text(value: str | None) -> str:
     return (value or "").strip()
 
 
+def log_skipped_row(
+    dataset_name: str,
+    csv_line: int,
+    reason: str,
+) -> None:
+    print(
+        f"[SKIP] {dataset_name} dòng {csv_line}: {reason}"
+    )
+
+
 def validate_columns(
     reader: csv.DictReader,
     required_columns: set[str],
@@ -69,6 +79,23 @@ def validate_columns(
             f"Cần: {sorted(required_columns)}\n"
             f"Hiện có: {sorted(actual_columns)}"
         )
+
+
+
+def first_present_value(
+    row: dict[str, str | None],
+    candidate_columns: Sequence[str],
+) -> str:
+    for column_name in candidate_columns:
+        if column_name in row:
+            return clean_text(row[column_name])
+    return ""
+
+def parse_int_or_none(value: str | None) -> int | None:
+    cleaned = clean_text(value)
+    if not cleaned:
+        return None
+    return int(cleaned)
 
 
 def connect_database() -> psycopg.Connection:
@@ -139,35 +166,76 @@ def insert_chat_qa(
             {
                 "id",
                 "message_id",
-                "content_student",
-                "content_tutor",
             },
             CHAT_CSV_PATH,
         )
 
+        actual_columns = set(reader.fieldnames or [])
+        student_columns = ["question_student", "content_student"]
+        tutor_columns = ["answer_tutor", "content_tutor"]
+
+        if not any(column in actual_columns for column in student_columns):
+            raise ValueError(
+                "File chat thi?u c?t c?u h?i c?a sinh vi?n. "
+                f"K? v?ng m?t trong c?c c?t: {student_columns}"
+            )
+
+        if not any(column in actual_columns for column in tutor_columns):
+            raise ValueError(
+                "File chat thi?u c?t c?u tr? l?i c?a tutor. "
+                f"K? v?ng m?t trong c?c c?t: {tutor_columns}"
+            )
+
         with connection.cursor() as cursor:
             for csv_line, row in enumerate(reader, start=2):
-                source_id = int(row["id"])
                 message_id = clean_text(row["message_id"])
-                content_student = clean_text(row["content_student"])
-                content_tutor = clean_text(row["content_tutor"])
+                content_student = first_present_value(row, student_columns)
+                content_tutor = first_present_value(row, tutor_columns)
+                source_id = parse_int_or_none(row["id"])
+
+                if (
+                    source_id is None
+                    and not message_id
+                    and not content_student
+                    and not content_tutor
+                ):
+                    log_skipped_row(
+                        "Chat CSV",
+                        csv_line,
+                        "dòng rỗng hoàn toàn",
+                    )
+                    continue
+
+                if source_id is None:
+                    log_skipped_row(
+                        "Chat CSV",
+                        csv_line,
+                        "id rỗng hoặc không hợp lệ",
+                    )
+                    continue
 
                 if not message_id:
-                    raise ValueError(
-                        f"Chat CSV dòng {csv_line}: message_id rỗng"
+                    log_skipped_row(
+                        "Chat CSV",
+                        csv_line,
+                        "message_id rỗng",
                     )
+                    continue
 
-                if not content_student:
-                    raise ValueError(
-                        f"Chat CSV dòng {csv_line}: "
-                        "content_student rỗng"
-                    )
+                # Nếu content_student rỗng, lấy content_tutor bù vào (và ngược lại)
+                if not content_student and content_tutor:
+                    content_student = content_tutor
+                elif not content_tutor and content_student:
+                    content_tutor = content_student
 
-                if not content_tutor:
-                    raise ValueError(
-                        f"Chat CSV dòng {csv_line}: "
-                        "content_tutor rỗng"
+                # Sau khi bù, nếu vẫn không có nội dung nào, bỏ qua
+                if not content_student and not content_tutor:
+                    log_skipped_row(
+                        "Chat CSV",
+                        csv_line,
+                        "cả content_student và content_tutor đều rỗng",
                     )
+                    continue
 
                 cursor.execute(
                     """
@@ -249,19 +317,41 @@ def insert_transcript_chunks(
         with connection.cursor() as cursor:
             for csv_line, row in enumerate(reader, start=2):
                 transcript_id = clean_text(row["id"])
-                day_id = int(row["day_id"])
+                day_id = parse_int_or_none(row["day_id"])
                 title = clean_text(row["title"]) or None
                 content = clean_text(row["content"])
 
-                if not transcript_id:
-                    raise ValueError(
-                        f"Transcript CSV dòng {csv_line}: id rỗng"
+                if not transcript_id and day_id is None and not title and not content:
+                    log_skipped_row(
+                        "Transcript CSV",
+                        csv_line,
+                        "dòng rỗng hoàn toàn",
                     )
+                    continue
+
+                if not transcript_id:
+                    log_skipped_row(
+                        "Transcript CSV",
+                        csv_line,
+                        "id rỗng",
+                    )
+                    continue
+
+                if day_id is None:
+                    log_skipped_row(
+                        "Transcript CSV",
+                        csv_line,
+                        "day_id rỗng hoặc không hợp lệ",
+                    )
+                    continue
 
                 if not content:
-                    raise ValueError(
-                        f"Transcript CSV dòng {csv_line}: content rỗng"
+                    log_skipped_row(
+                        "Transcript CSV",
+                        csv_line,
+                        "content rỗng",
                     )
+                    continue
 
                 cursor.execute(
                     """

@@ -36,7 +36,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router)
     app.include_router(chat.router, prefix=settings.api_prefix)
-    app.include_router(tutor.router)
+    app.include_router(tutor.router, prefix=settings.api_prefix)
     return app
 
 

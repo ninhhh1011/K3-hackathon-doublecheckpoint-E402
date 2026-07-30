@@ -4,13 +4,13 @@ import { describe, expect, it } from "vitest";
 import App from "./App";
 
 describe("VLearn shell", () => {
-  it("renders an API-ready empty state without fake lesson content", () => {
+  it("renders the tutor shell with demo material fallback", () => {
     const html = renderToStaticMarkup(<App />);
 
     expect(html).toContain("VLearn Tutor");
-    expect(html).toContain("Chưa chọn tài liệu");
-    expect(html).toContain("materialId");
-    expect(html).toContain("Reader tải đúng nội dung từ API");
-    expect(html).not.toContain("Attention liên hệ các token");
+    expect(html).toContain("Tai lieu hoc tap demo");
+    expect(html).toContain("VINAI-101");
+    expect(html).toContain("Hỏi về nội dung đang học");
+    expect(html).not.toContain("Attention lien he cac token");
   });
 });

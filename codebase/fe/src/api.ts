@@ -70,7 +70,7 @@ export function createApiClient(baseUrl = "", fetcher: Fetcher = fetch) {
     async loadMaterial(materialId: string): Promise<Material> {
       const value = await jsonRequest(
         fetcher,
-        apiUrl(baseUrl, `/api/materials/${encodeURIComponent(materialId)}`),
+        apiUrl(baseUrl, `/api/v1/materials/${encodeURIComponent(materialId)}`),
       );
       const material = normalizeMaterial(value);
       if (!material) {
@@ -82,7 +82,7 @@ export function createApiClient(baseUrl = "", fetcher: Fetcher = fetch) {
     async sendTurn(request: TutorTurnRequest): Promise<TutorTurn> {
       const value = await jsonRequest(
         fetcher,
-        apiUrl(baseUrl, "/api/tutor/turns"),
+        apiUrl(baseUrl, "/api/v1/tutor/turns"),
         postJson(request),
       );
       const turn = normalizeTutorTurn(value, request.sourceIds);
@@ -95,7 +95,7 @@ export function createApiClient(baseUrl = "", fetcher: Fetcher = fetch) {
     async loadQuiz(request: QuizRequest): Promise<Quiz> {
       const value = await jsonRequest(
         fetcher,
-        apiUrl(baseUrl, "/api/tutor/quiz"),
+        apiUrl(baseUrl, "/api/v1/tutor/quiz"),
         postJson(request),
       );
       if (!validateQuiz(value, request.sourceIds)) {
@@ -106,7 +106,7 @@ export function createApiClient(baseUrl = "", fetcher: Fetcher = fetch) {
 
     async declineQuiz(request: QuizDeclineRequest): Promise<void> {
       const response = await fetcher(
-        apiUrl(baseUrl, "/api/tutor/declines"),
+        apiUrl(baseUrl, "/api/v1/tutor/declines"),
         postJson(request),
       );
       if (!response.ok) {

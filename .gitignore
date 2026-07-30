@@ -2,6 +2,11 @@
 node_modules/
 codebase/fe/dist/
 codebase/fe/coverage/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.egg-info/
 *.env
 data/
 .worktrees/

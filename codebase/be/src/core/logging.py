@@ -7,3 +7,6 @@ def configure_logging(level: str) -> None:
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
 
+
+logger = logging.getLogger("vinai_action_api")
+

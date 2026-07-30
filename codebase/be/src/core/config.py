@@ -11,8 +11,11 @@ class Settings(BaseSettings):
     app_env: Literal["development", "staging", "production"] = "development"
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
     api_prefix: str = "/api/v1"
-    allowed_origins: list[str] = Field(default_factory=lambda: ["http://localhost:3000"])
+    allowed_origins: list[str] = Field(
+        default_factory=lambda: ["http://localhost:3000", "http://localhost:5173"]
+    )
     openai_api_key: str = Field(default="", alias="OPENAI_API_KEY")
+    openai_model: str = "gpt-4o-mini"
 
     model_config = SettingsConfigDict(
         env_file=".env",

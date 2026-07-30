@@ -5,7 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.agent import AgentService
-from src.api.routes import health, chat
+from src.api.routes import chat, health, tutor
 from src.core.config import settings
 from src.core.logging import configure_logging
 
@@ -36,6 +36,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router)
     app.include_router(chat.router, prefix=settings.api_prefix)
+    app.include_router(tutor.router)
     return app
 
 

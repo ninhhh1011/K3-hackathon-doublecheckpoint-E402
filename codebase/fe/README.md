@@ -15,15 +15,12 @@ npm.cmd run dev
 Mở:
 
 ```text
-http://localhost:5173/?materialId=<id-tu-backend>
+http://127.0.0.1:5173/
 ```
 
-Nếu backend chạy ở origin khác:
-
-```powershell
-$env:VITE_API_BASE_URL="http://localhost:8000"
-npm.cmd run dev
-```
+Reader mặc định tải `demo-slides.pdf` từ backend. Có thể dùng
+`?materialId=<id-tu-backend>` để mở tài liệu khác khi backend hỗ trợ.
+Vite tự proxy `/api` tới `http://127.0.0.1:8000` khi chạy local.
 
 Không đặt API key AI trong biến môi trường frontend.
 
@@ -49,6 +46,6 @@ npm.cmd run build
 ## Trạng thái tích hợp
 
 - Reader, Tutor, mind map, quiz suggestion và quiz đã có component responsive.
-- Không có `materialId`: hiển thị empty state trung tính.
+- Không có `materialId`: tải tài liệu `demo-slides` để review.
 - Có metadata nhưng thiếu `documentUrl`: giữ Reader shell và báo thiếu dữ liệu.
 - Lịch sử chat và PDF text layer chờ backend contract/capability tương ứng.

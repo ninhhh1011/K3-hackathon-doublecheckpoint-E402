@@ -8,11 +8,13 @@ httpx
 pytest
 pytest-asyncio
 ruff
+torch==2.8.0
+torchvision==0.23.0
 langchain 
 langchain-openai
 deepagents
 docling
-psycopg
+psycopg[binary]
 pgvector
 sentence-transformers
 numpy

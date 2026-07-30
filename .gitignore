@@ -1,4 +1,6 @@
 .DS_Store
 node_modules/
+codebase/fe/dist/
+codebase/fe/coverage/
 *.env
 data/

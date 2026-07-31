@@ -117,17 +117,20 @@ export type TraceStreamEvent =
       type: "node_start";
       nodeType: TraceNodeType;
       nodeId: string;
+      eventId: string;
       label: string;
       payload?: { input?: unknown; toolName?: string; branchLabel?: string };
     }
   | {
       type: "node_end";
       nodeId: string;
+      eventId: string;
       payload?: { output?: unknown };
     }
   | {
       type: "node_error";
       nodeId: string;
+      eventId: string;
       payload?: { output?: unknown };
     };
 
@@ -140,7 +143,7 @@ export type ChatStreamRequest = {
   message: string;
   pageNumber: number;
   selectedContexts: PendingContext[];
-  currentDocument: File | null;
+  currentDocument?: File | null;
   history: ChatHistoryItem[];
   quizRequest?: "none" | "accept" | "decline";
 };

@@ -81,21 +81,26 @@ class AgentService:
         use_rag = route.route == "agent"
         processed_context = await self._collect_processed_context(payload, include_rag=use_rag)
         prompt = self._build_chat_prompt(payload, processed_context)
-        response_text = await self._generate_by_route(route, payload, prompt)
+        wants_mindmap = self._should_generate_mindmap_image(payload)
+        response_text = (
+            self._build_mindmap_response_text(processed_context)
+            if wants_mindmap
+            else await self._generate_by_route(route, payload, prompt)
+        )
         output_check = await self._guardrail_service.check_output(response_text, payload)
         response_text = output_check.response
 
         quiz = None
         mindmap_image = None
         quiz_offer = False
-        if self._should_generate_quiz(payload):
-            quiz = self._generate_quiz_artifact(payload, processed_context, response_text)
-        elif self._should_generate_mindmap_image(payload):
+        if wants_mindmap:
             mindmap_image = self._generate_mindmap_image_artifact(
                 payload,
                 processed_context,
                 response_text,
             )
+        elif self._should_generate_quiz(payload):
+            quiz = self._generate_quiz_artifact(payload, processed_context, response_text)
         elif await self._should_offer_quiz(payload, processed_context, response_text):
             quiz_offer = True
 
@@ -126,6 +131,7 @@ class AgentService:
             return self._encode_sse("trace", event.model_dump())
 
         page_number = payload.page_number or 1
+        input_guardrail_trace_id = self._new_trace_id()
         yield await emit(
             self._trace(
                 "node_start",
@@ -135,13 +141,20 @@ class AgentService:
                     "question": payload.message,
                     "page_number": page_number,
                 },
+                event_id=input_guardrail_trace_id,
             )
         )
         route = await self._guardrail_service.route_intent(payload)
         yield await emit(
-            self._trace("node_end", "input_guardrail", self._route_trace_payload(route))
+            self._trace(
+                "node_end",
+                "input_guardrail",
+                self._route_trace_payload(route),
+                event_id=input_guardrail_trace_id,
+            )
         )
 
+        router_trace_id = self._new_trace_id()
         yield await emit(
             self._trace(
                 "node_start",
@@ -157,6 +170,7 @@ class AgentService:
                         for attachment in payload.attachments
                     ),
                 },
+                event_id=router_trace_id,
             )
         )
         yield await emit(
@@ -168,6 +182,7 @@ class AgentService:
                     "reason": route.reason,
                     "execution": "learning_agent" if route.route == "agent" else "grounded_chat",
                 },
+                event_id=router_trace_id,
             )
         )
 
@@ -178,32 +193,42 @@ class AgentService:
             include_rag=use_rag,
         )
         prompt = self._build_chat_prompt(payload, processed_context)
+        wants_mindmap = self._should_generate_mindmap_image(payload)
 
+        llm_trace_id = self._new_trace_id()
         yield await emit(
             self._trace(
                 "node_start",
                 "llm_generation",
                 {
-                    "model": settings.vlearn_agent_model,
+                    "model": "mindmap_artifact_intent" if wants_mindmap else settings.vlearn_agent_model,
                     "context_blocks": len(processed_context),
                     "route": route.route,
                 },
+                event_id=llm_trace_id,
             )
         )
-        response_text = await self._generate_by_route(route, payload, prompt)
+        response_text = (
+            self._build_mindmap_response_text(processed_context)
+            if wants_mindmap
+            else await self._generate_by_route(route, payload, prompt)
+        )
         yield await emit(
             self._trace(
                 "node_end",
                 "llm_generation",
                 {"characters": len(response_text), "preview": response_text[:300]},
+                event_id=llm_trace_id,
             )
         )
 
+        output_guardrail_trace_id = self._new_trace_id()
         yield await emit(
             self._trace(
                 "node_start",
                 "output_guardrail",
                 {"model": settings.vlearn_output_guardrail_model, "characters": len(response_text)},
+                event_id=output_guardrail_trace_id,
             )
         )
         output_check = await self._guardrail_service.check_output(response_text, payload)
@@ -213,39 +238,22 @@ class AgentService:
                 "node_end",
                 "output_guardrail",
                 self._output_guardrail_trace_payload(output_check),
+                event_id=output_guardrail_trace_id,
             )
         )
 
         quiz = None
         mindmap_image = None
         quiz_offer = False
-        if self._should_generate_quiz(payload):
-            yield await emit(
-                self._trace(
-                    "tool_call",
-                    "gen_question",
-                    {"tool": "gen_question", "context_blocks": len(processed_context)},
-                )
-            )
-            quiz = self._generate_quiz_artifact(payload, processed_context, response_text)
-            yield await emit(
-                self._trace(
-                    "tool_result",
-                    "gen_question",
-                    {
-                        "has_quiz": quiz is not None,
-                        "question": quiz.question if quiz else None,
-                        "choice_count": len(quiz.choices) if quiz else 0,
-                    },
-                )
-            )
-        elif self._should_generate_mindmap_image(payload):
+        if wants_mindmap:
             outline_context = self._build_mindmap_context(payload, processed_context, response_text)
+            gen_mindmap_trace_id = self._new_trace_id()
             yield await emit(
                 self._trace(
                     "tool_call",
                     "gen_mindmap",
                     {"tool": "gen_mindmap", "context_characters": len(outline_context)},
+                    event_id=gen_mindmap_trace_id,
                 )
             )
             outline_json = self._generate_mindmap_outline(outline_context)
@@ -258,13 +266,16 @@ class AgentService:
                         "characters": len(outline_json or ""),
                         "preview": (outline_json or "")[:300],
                     },
+                    event_id=gen_mindmap_trace_id,
                 )
             )
+            gen_mindmap_image_trace_id = self._new_trace_id()
             yield await emit(
                 self._trace(
                     "tool_call",
                     "gen_mindmap_image",
-                    {"tool": "gen_mindmap_image", "response_characters": len(response_text)},
+                    {"tool": "gen_mindmap_image", "context_characters": len(outline_context)},
+                    event_id=gen_mindmap_image_trace_id,
                 )
             )
             mindmap_image = self._generate_mindmap_image_artifact(
@@ -283,6 +294,7 @@ class AgentService:
                         "mime_type": mindmap_image.mime_type if mindmap_image else None,
                         "note": mindmap_image.note if mindmap_image else "Mindmap image generation failed.",
                     },
+                    event_id=gen_mindmap_image_trace_id,
                 )
             )
             if mindmap_image is not None:
@@ -293,6 +305,29 @@ class AgentService:
                         "mindmap_image": mindmap_image.model_dump(mode="json"),
                     },
                 )
+        elif self._should_generate_quiz(payload):
+            quiz_trace_id = self._new_trace_id()
+            yield await emit(
+                self._trace(
+                    "tool_call",
+                    "gen_question",
+                    {"tool": "gen_question", "context_blocks": len(processed_context)},
+                    event_id=quiz_trace_id,
+                )
+            )
+            quiz = self._generate_quiz_artifact(payload, processed_context, response_text)
+            yield await emit(
+                self._trace(
+                    "tool_result",
+                    "gen_question",
+                    {
+                        "has_quiz": quiz is not None,
+                        "question": quiz.question if quiz else None,
+                        "choice_count": len(quiz.choices) if quiz else 0,
+                    },
+                    event_id=quiz_trace_id,
+                )
+            )
         elif await self._should_offer_quiz(payload, processed_context, response_text):
             quiz_offer = True
 
@@ -322,12 +357,14 @@ class AgentService:
 
         current_documents = [item for item in payload.attachments if item.purpose == "current_document"]
         for document in current_documents:
+            parse_slide_trace_id = self._new_trace_id()
             if emit:
                 await emit(
                     self._trace(
                         "tool_call",
                         "parse_current_slide",
                         {"tool": "docling", "file_name": document.name, "page_number": page_number},
+                        event_id=parse_slide_trace_id,
                     )
                 )
             parsed = await self._document_service.parse_attachment(document, page_number)
@@ -338,6 +375,7 @@ class AgentService:
                         "tool_result",
                         "parse_current_slide",
                         {"page_number": page_number, "characters": len(parsed), "preview": parsed[:500]},
+                        event_id=parse_slide_trace_id,
                     )
                 )
 
@@ -345,12 +383,14 @@ class AgentService:
             if attachment.purpose != "attachment":
                 continue
             if attachment.kind == "image":
+                image_trace_id = self._new_trace_id()
                 if emit:
                     await emit(
                         self._trace(
                             "tool_call",
                             "understand_image",
                             {"tool": "mock_image_reader", "file_name": attachment.name},
+                            event_id=image_trace_id,
                         )
                     )
                 image_context = self._document_service.describe_image(attachment)
@@ -361,16 +401,19 @@ class AgentService:
                             "tool_result",
                             "understand_image",
                             {"file_name": attachment.name, "result": image_context},
+                            event_id=image_trace_id,
                         )
                     )
                 continue
 
+            parse_attachment_trace_id = self._new_trace_id()
             if emit:
                 await emit(
                     self._trace(
                         "tool_call",
                         "parse_attached_document",
                         {"tool": "docling", "file_name": attachment.name},
+                        event_id=parse_attachment_trace_id,
                     )
                 )
             parsed = await self._document_service.parse_attachment(attachment)
@@ -381,6 +424,7 @@ class AgentService:
                         "tool_result",
                         "parse_attached_document",
                         {"file_name": attachment.name, "characters": len(parsed), "preview": parsed[:500]},
+                        event_id=parse_attachment_trace_id,
                     )
                 )
 
@@ -388,10 +432,26 @@ class AgentService:
         if selected_context:
             processed_context.append(selected_context)
             if emit:
-                await emit(self._trace("node_start", "selected_pdf_context", {"context_count": len(payload.contexts)}))
-                await emit(self._trace("node_end", "selected_pdf_context", {"preview": selected_context[:500]}))
+                selected_context_trace_id = self._new_trace_id()
+                await emit(
+                    self._trace(
+                        "node_start",
+                        "selected_pdf_context",
+                        {"context_count": len(payload.contexts)},
+                        event_id=selected_context_trace_id,
+                    )
+                )
+                await emit(
+                    self._trace(
+                        "node_end",
+                        "selected_pdf_context",
+                        {"preview": selected_context[:500]},
+                        event_id=selected_context_trace_id,
+                    )
+                )
 
         if include_rag and payload.message:
+            rag_trace_id = self._new_trace_id()
             if emit:
                 await emit(
                     self._trace(
@@ -404,9 +464,12 @@ class AgentService:
                             "top_k": settings.vlearn_rag_top_k,
                             "score_threshold": settings.vlearn_rag_score_threshold,
                         },
+                        event_id=rag_trace_id,
                     )
                 )
-            rag_results = await self._rag_service.retrieve(payload.message)
+            rag_payload = await self._rag_service.retrieve(payload.message)
+            rag_results = rag_payload["results"] if isinstance(rag_payload.get("results"), list) else []
+            rag_sources = rag_payload["sources"] if isinstance(rag_payload.get("sources"), dict) else {}
             processed_context.extend(self._rag_service.format_context_blocks(rag_results))
             if emit:
                 await emit(
@@ -415,6 +478,49 @@ class AgentService:
                         "rag_retrieval",
                         {
                             "accepted_count": len(rag_results),
+                            "accepted_count_by_source": {
+                                source_name: source_data.get("accepted_count", 0)
+                                for source_name, source_data in rag_sources.items()
+                                if isinstance(source_data, dict)
+                            },
+                            "sources": {
+                                source_name: {
+                                    "top_k": source_data.get("top_k"),
+                                    "score_threshold": source_data.get("score_threshold"),
+                                    "retrieved_count": source_data.get("retrieved_count"),
+                                    "accepted_count": source_data.get("accepted_count"),
+                                    "results": [
+                                        {
+                                            "source_type": item["source_type"],
+                                            "source_id": item["source_id"],
+                                            "combined_score": round(float(item["combined_score"]), 4),
+                                            "cosine_score": round(float(item["cosine_score"]), 4),
+                                            "bm25_score": round(float(item["bm25_score"]), 4),
+                                            "retrieval_methods": item["retrieval_methods"],
+                                            "preview": str(item["content"])[:280],
+                                            "extra_content": str(item["extra_content"])[:160],
+                                        }
+                                        for item in source_data.get("results", [])
+                                        if isinstance(item, dict)
+                                    ],
+                                    "raw_results": [
+                                        {
+                                            "source_type": item["source_type"],
+                                            "source_id": item["source_id"],
+                                            "combined_score": round(float(item["combined_score"]), 4),
+                                            "cosine_score": round(float(item["cosine_score"]), 4),
+                                            "bm25_score": round(float(item["bm25_score"]), 4),
+                                            "retrieval_methods": item["retrieval_methods"],
+                                            "preview": str(item["content"])[:280],
+                                            "extra_content": str(item["extra_content"])[:160],
+                                        }
+                                        for item in source_data.get("raw_results", [])
+                                        if isinstance(item, dict)
+                                    ],
+                                }
+                                for source_name, source_data in rag_sources.items()
+                                if isinstance(source_data, dict)
+                            },
                             "results": [
                                 {
                                     "source_type": item["source_type"],
@@ -429,9 +535,11 @@ class AgentService:
                                 for item in rag_results
                             ],
                         },
+                        event_id=rag_trace_id,
                     )
                 )
         elif emit and payload.message:
+            rag_skip_trace_id = self._new_trace_id()
             await emit(
                 self._trace(
                     "node_end",
@@ -440,6 +548,7 @@ class AgentService:
                         "skipped": True,
                         "reason": "Route is grounded_chat, so retrieval DB was not used.",
                     },
+                    event_id=rag_skip_trace_id,
                 )
             )
 
@@ -563,6 +672,8 @@ class AgentService:
         return [f"slide-{page}" for page in sorted(pages)]
 
     def _should_generate_quiz(self, payload: ChatRequest) -> bool:
+        if self._is_explicit_mindmap_request(payload.message):
+            return False
         if payload.quiz_request == "accept":
             return True
         if payload.quiz_request == "decline":
@@ -578,6 +689,8 @@ class AgentService:
         if payload.quiz_request != "none":
             return False
         if self._is_explicit_quiz_request(payload.message):
+            return False
+        if self._is_explicit_mindmap_request(payload.message):
             return False
         return await self._decide_quiz_offer(payload, processed_context, response_text)
 
@@ -598,9 +711,10 @@ class AgentService:
         return any(keyword in normalized for keyword in quiz_keywords)
 
     def _should_generate_mindmap_image(self, payload: ChatRequest) -> bool:
-        if self._should_generate_quiz(payload):
-            return False
-        normalized = payload.message.lower()
+        return self._is_explicit_mindmap_request(payload.message)
+
+    def _is_explicit_mindmap_request(self, message: str) -> bool:
+        normalized = message.lower()
         keywords = (
             "mindmap",
             "mind map",
@@ -714,6 +828,11 @@ class AgentService:
             f"Ngu canh hoc tap lien quan:\n{context_preview or 'Khong co ngu canh bo sung.'}"
         ).strip()
 
+    def _build_mindmap_response_text(self, processed_context: list[str]) -> str:
+        if processed_context:
+            return "Minh da tao mindmap dua tren ngu canh ban gui."
+        return "Minh da tao mindmap theo yeu cau cua ban."
+
     def _generate_mindmap_image_artifact(
         self,
         payload: ChatRequest,
@@ -726,7 +845,7 @@ class AgentService:
             outline_json = outline_json or self._generate_mindmap_outline(outline_context)
             raw = gen_mindmap_image.invoke(
                 {
-                    "content": response_text.strip() or payload.message.strip() or outline_context,
+                    "content": outline_context,
                     "outline_json": outline_json,
                 }
             )
@@ -750,8 +869,22 @@ class AgentService:
             logger.exception("Failed to generate mindmap outline")
             return None
 
-    def _trace(self, event_type: str, node_name: str, payload: dict[str, object]) -> TraceEvent:
-        return TraceEvent(type=event_type, node_name=node_name, payload=payload)
+    def _new_trace_id(self) -> str:
+        return str(uuid4())
+
+    def _trace(
+        self,
+        event_type: str,
+        node_name: str,
+        payload: dict[str, object],
+        event_id: str | None = None,
+    ) -> TraceEvent:
+        return TraceEvent(
+            type=event_type,
+            event_id=event_id or self._new_trace_id(),
+            node_name=node_name,
+            payload=payload,
+        )
 
     def _route_trace_payload(self, route: GuardrailRouteResult) -> dict[str, object]:
         return {

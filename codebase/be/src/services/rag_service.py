@@ -24,27 +24,22 @@ class RAGService:
             settings.vlearn_rag_score_threshold,
         )
 
-    async def retrieve(self, query: str) -> list[dict[str, object]]:
+    async def retrieve(self, query: str) -> dict[str, object]:
         normalized_query = query.strip()
         if not normalized_query:
-            return []
+            return self._empty_retrieval_result()
 
         try:
             embedding = await self._embed_query(normalized_query)
-            results = await asyncio.to_thread(
+            grouped_results = await asyncio.to_thread(
                 self._database_service.hybrid_search_documents,
                 normalized_query,
                 embedding,
             )
-            return [
-                item
-                for item in results
-                if float(item["cosine_score"]) >= settings.vlearn_rag_score_threshold
-                or float(item["bm25_score"]) > 0
-            ][: max(settings.vlearn_rag_top_k, 1)]
+            return self._filter_grouped_results(grouped_results)
         except Exception:
             logger.exception("Failed to retrieve RAG results for query")
-            return []
+            return self._empty_retrieval_result()
 
     def format_context_blocks(self, rag_results: list[dict[str, object]]) -> list[str]:
         if not rag_results:
@@ -78,6 +73,61 @@ class RAGService:
             lines.append(block)
 
         return ["\n".join(lines)]
+
+    def _filter_grouped_results(
+        self,
+        grouped_results: dict[str, list[dict[str, object]]],
+    ) -> dict[str, object]:
+        top_k = max(settings.vlearn_rag_top_k, 1)
+        threshold = settings.vlearn_rag_score_threshold
+        sources: dict[str, dict[str, object]] = {}
+        accepted_flat: list[dict[str, object]] = []
+
+        for source_name in ("chat_qa", "transcript"):
+            raw_items = grouped_results.get(source_name, [])
+            accepted_items = [
+                item
+                for item in raw_items
+                if float(item["cosine_score"]) >= threshold or float(item["bm25_score"]) > 0
+            ][:top_k]
+            sources[source_name] = {
+                "top_k": top_k,
+                "score_threshold": threshold,
+                "retrieved_count": len(raw_items),
+                "accepted_count": len(accepted_items),
+                "results": accepted_items,
+                "raw_results": raw_items,
+            }
+            accepted_flat.extend(accepted_items)
+
+        accepted_flat.sort(key=lambda item: float(item["combined_score"]), reverse=True)
+        return {
+            "results": accepted_flat,
+            "sources": sources,
+        }
+
+    def _empty_retrieval_result(self) -> dict[str, object]:
+        return {
+            "results": [],
+            "sources": {
+                "chat_qa": {
+                    "top_k": max(settings.vlearn_rag_top_k, 1),
+                    "score_threshold": settings.vlearn_rag_score_threshold,
+                    "retrieved_count": 0,
+                    "accepted_count": 0,
+                    "results": [],
+                    "raw_results": [],
+                },
+                "transcript": {
+                    "top_k": max(settings.vlearn_rag_top_k, 1),
+                    "score_threshold": settings.vlearn_rag_score_threshold,
+                    "retrieved_count": 0,
+                    "accepted_count": 0,
+                    "results": [],
+                    "raw_results": [],
+                },
+            },
+        }
 
     async def _ensure_embedding_model(self) -> Any:
         if self._embedding_model is not None:

@@ -165,12 +165,15 @@ class DatabaseService:
             for row in rows
         ][:top_k]
 
-    def hybrid_search_documents(self, query: str, embedding: np.ndarray) -> list[dict[str, object]]:
+    def hybrid_search_documents(self, query: str, embedding: np.ndarray) -> dict[str, list[dict[str, object]]]:
         from pgvector import Vector
 
         candidate_limit = max(settings.vlearn_rag_top_k, 1)
         seed_limit = max(candidate_limit * 2, 6)
-        rows: list[dict[str, object]] = []
+        grouped_rows: dict[str, list[dict[str, object]]] = {
+            "chat_qa": [],
+            "transcript": [],
+        }
 
         with self.connect() as connection, connection.cursor() as cursor:
             query_vector = Vector(embedding)
@@ -192,7 +195,7 @@ class DatabaseService:
                 """,
                 (query_vector, query_vector, seed_limit),
             )
-            rows.extend(self._normalize_hybrid_rows(cursor.fetchall()))
+            grouped_rows["chat_qa"].extend(self._normalize_hybrid_rows(cursor.fetchall()))
 
             cursor.execute(
                 """
@@ -211,7 +214,7 @@ class DatabaseService:
                 """,
                 (query_vector, query_vector, seed_limit),
             )
-            rows.extend(self._normalize_hybrid_rows(cursor.fetchall()))
+            grouped_rows["transcript"].extend(self._normalize_hybrid_rows(cursor.fetchall()))
 
             ts_query = self._build_ts_query(cursor, query)
             if ts_query is not None:
@@ -235,7 +238,7 @@ class DatabaseService:
                     """,
                     (ts_query, ts_query, seed_limit),
                 )
-                rows.extend(self._normalize_hybrid_rows(cursor.fetchall()))
+                grouped_rows["chat_qa"].extend(self._normalize_hybrid_rows(cursor.fetchall()))
 
                 cursor.execute(
                     """
@@ -257,9 +260,12 @@ class DatabaseService:
                     """,
                     (ts_query, ts_query, seed_limit),
                 )
-                rows.extend(self._normalize_hybrid_rows(cursor.fetchall()))
+                grouped_rows["transcript"].extend(self._normalize_hybrid_rows(cursor.fetchall()))
 
-        return self._merge_hybrid_results(rows)[:candidate_limit]
+        return {
+            source_type: self._merge_hybrid_results(rows)[:candidate_limit]
+            for source_type, rows in grouped_rows.items()
+        }
 
     def _normalize_hybrid_rows(self, rows: list[tuple[object, ...]]) -> list[dict[str, object]]:
         normalized: list[dict[str, object]] = []

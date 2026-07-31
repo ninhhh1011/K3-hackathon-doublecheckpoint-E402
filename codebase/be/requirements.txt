@@ -19,3 +19,4 @@ pgvector
 sentence-transformers
 numpy
 pandas
+google-genai

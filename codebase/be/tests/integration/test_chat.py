@@ -130,5 +130,5 @@ def test_chat_streams_fallback_when_docling_extracts_empty_text() -> None:
 
     assert response.status_code == 200
     assert "parse_attached_document" in body
-    assert "Docling khong trich xuat duoc noi dung tu tep scan.pdf" in body
+    assert "Docling không trích xuất được nội dung từ tệp scan.pdf" in body
     assert "event: final" in body

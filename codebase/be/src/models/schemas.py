@@ -4,6 +4,13 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 
+def _clean_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    cleaned = value.strip()
+    return cleaned or None
+
+
 class BoundingBox(BaseModel):
     x: float = Field(ge=0)
     y: float = Field(ge=0)
@@ -14,25 +21,19 @@ class BoundingBox(BaseModel):
 class ChatContext(BaseModel):
     type: Literal["text", "image"]
     page_number: int = Field(ge=1)
-    text: str | None = Field(default=None, max_length=10000)
+    text: str | None = Field(default=None, max_length=10_000)
     image_data_url: str | None = Field(default=None, max_length=2_000_000)
     bounding_box: BoundingBox | None = None
 
     @field_validator("text")
     @classmethod
     def clean_text(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = value.strip()
-        return cleaned or None
+        return _clean_optional_text(value)
 
     @field_validator("image_data_url")
     @classmethod
     def clean_image_data_url(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = value.strip()
-        return cleaned or None
+        return _clean_optional_text(value)
 
     @model_validator(mode="after")
     def validate_payload_by_type(self) -> "ChatContext":
@@ -48,7 +49,7 @@ class TutorAttachment(BaseModel):
     kind: Literal["image", "pdf", "text", "other"]
     purpose: Literal["current_document", "attachment"] = "attachment"
     mime_type: str | None = Field(default=None, max_length=120)
-    text_content: str | None = Field(default=None, max_length=20000)
+    text_content: str | None = Field(default=None, max_length=20_000)
     image_data_url: str | None = Field(default=None, max_length=2_000_000)
     file_data_url: str | None = Field(default=None, max_length=40_000_000)
 
@@ -63,26 +64,17 @@ class TutorAttachment(BaseModel):
     @field_validator("text_content")
     @classmethod
     def clean_text_content(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = value.strip()
-        return cleaned or None
+        return _clean_optional_text(value)
 
     @field_validator("image_data_url")
     @classmethod
     def clean_attachment_image_data_url(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = value.strip()
-        return cleaned or None
+        return _clean_optional_text(value)
 
     @field_validator("file_data_url")
     @classmethod
     def clean_file_data_url(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = value.strip()
-        return cleaned or None
+        return _clean_optional_text(value)
 
     @model_validator(mode="after")
     def validate_attachment_payload(self) -> "TutorAttachment":
@@ -95,7 +87,7 @@ class TutorAttachment(BaseModel):
 
 class ChatHistoryItem(BaseModel):
     role: Literal["user", "assistant"]
-    content: str = Field(min_length=1, max_length=10000)
+    content: str = Field(min_length=1, max_length=10_000)
 
     @field_validator("content")
     @classmethod
@@ -107,13 +99,14 @@ class ChatHistoryItem(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    message: str = Field(default="", max_length=5000, description="User message")
+    message: str = Field(default="", max_length=5_000)
     conversation_id: str | None = Field(default=None, max_length=255)
-    stream: bool = Field(default=False, description="Whether to stream the response")
+    stream: bool = False
+    quiz_request: Literal["none", "accept", "decline"] = "none"
     material_id: str | None = Field(default=None, max_length=255)
     page_number: int | None = Field(default=None, ge=1)
     source_ids: list[str] = Field(default_factory=list)
-    selected_text: str | None = Field(default=None, max_length=10000)
+    selected_text: str | None = Field(default=None, max_length=10_000)
     history: list[ChatHistoryItem] = Field(default_factory=list, max_length=20)
     contexts: list[ChatContext] = Field(default_factory=list)
     attachments: list[TutorAttachment] = Field(default_factory=list, max_length=5)
@@ -126,44 +119,59 @@ class ChatRequest(BaseModel):
     @field_validator("conversation_id")
     @classmethod
     def clean_conversation_id(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = value.strip()
-        return cleaned or None
+        return _clean_optional_text(value)
 
     @field_validator("material_id")
     @classmethod
     def clean_material_id(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = value.strip()
-        return cleaned or None
+        return _clean_optional_text(value)
 
     @field_validator("selected_text")
     @classmethod
     def clean_selected_text(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        cleaned = value.strip()
-        return cleaned or None
+        return _clean_optional_text(value)
 
     @model_validator(mode="after")
     def require_message_or_context(self) -> "ChatRequest":
-        if not self.message and not self.contexts and not self.attachments:
+        if (
+            not self.message
+            and not self.contexts
+            and not self.attachments
+            and self.quiz_request == "none"
+        ):
             raise ValueError("Provide a message, at least one context item, or at least one attachment.")
         return self
 
 
 class TraceEvent(BaseModel):
     type: Literal["node_start", "node_end", "tool_call", "tool_result", "message_delta", "final"]
+    event_id: str | None = None
     node_name: str | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class QuizArtifact(BaseModel):
+    question: str
+    choices: list[str] = Field(min_length=4, max_length=4)
+    correctIndex: int = Field(ge=0, le=3)
+    explanation: str
+    citations: list[str] = Field(default_factory=list)
+
+
+class MindmapImageArtifact(BaseModel):
+    model: str
+    image_data_url: str | None = None
+    mime_type: str = "image/png"
+    note: str = ""
 
 
 class ChatResponse(BaseModel):
     response: str
     conversation_id: str
     sources: list[str] = Field(default_factory=list)
+    quiz: QuizArtifact | None = None
+    mindmap_image: MindmapImageArtifact | None = None
+    quiz_offer: bool = False
     trace: list[TraceEvent] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=lambda: datetime.now(UTC))
 

@@ -1,4 +1,4 @@
-import { type FormEvent, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useMemo, useRef, useState } from "react";
 
 import type { createApiClient } from "../api";
 import { composerFailed } from "../core";
@@ -8,6 +8,7 @@ import type {
   Material,
   MindMap,
   Quiz,
+  TutorAttachment,
 } from "../types";
 import { Citations, MindMapCard, QuizCard, QuizSuggestion } from "./Artifacts";
 
@@ -22,6 +23,8 @@ type TimelineItem =
 type TutorProps = {
   api: ApiClient;
   material: Material | null;
+  selectedText: string;
+  onSelectedTextChange: (value: string) => void;
   onClose: () => void;
 };
 
@@ -33,8 +36,59 @@ function newId(prefix: string): string {
   return `${prefix}-${suffix}`;
 }
 
-export default function Tutor({ api, material, onClose }: TutorProps) {
+function inferAttachmentKind(file: File): TutorAttachment["kind"] {
+  if (file.type.startsWith("image/")) {
+    return "image";
+  }
+  if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) {
+    return "pdf";
+  }
+  if (
+    file.type.startsWith("text/") ||
+    file.type === "application/json" ||
+    file.name.toLowerCase().endsWith(".md")
+  ) {
+    return "text";
+  }
+  return "other";
+}
+
+async function readImageDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("read-failed"));
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function createAttachment(file: File): Promise<TutorAttachment> {
+  const kind = inferAttachmentKind(file);
+  const attachment: TutorAttachment = {
+    name: file.name,
+    kind,
+    mimeType: file.type || undefined,
+  };
+
+  if (kind === "text") {
+    attachment.textContent = (await file.text()).slice(0, 20000);
+  }
+  if (kind === "image") {
+    attachment.imageDataUrl = await readImageDataUrl(file);
+  }
+
+  return attachment;
+}
+
+export default function Tutor({
+  api,
+  material,
+  selectedText,
+  onSelectedTextChange,
+  onClose,
+}: TutorProps) {
   const sessionId = useMemo(() => newId("session"), []);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [composer, setComposer] = useState<ComposerState>({
     draft: "",
@@ -42,6 +96,7 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
     error: null,
   });
   const [quizLoadingId, setQuizLoadingId] = useState<string | null>(null);
+  const [attachments, setAttachments] = useState<TutorAttachment[]>([]);
 
   const canSend =
     Boolean(material) && composer.draft.trim().length > 0 && !composer.sending;
@@ -71,7 +126,9 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
         materialId: material.id,
         pageNumber: material.pageNumber,
         sourceIds: material.sourceIds,
+        selectedText: selectedText.trim() || undefined,
         message: text,
+        attachments,
       });
       setTimeline((items) => {
         const next: TimelineItem[] = [
@@ -95,12 +152,10 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
         return next;
       });
       setComposer({ draft: "", sending: false, error: null });
+      setAttachments([]);
     } catch {
       setComposer((state) =>
-        composerFailed(
-          state,
-          "Không thể kết nối Tutor. Nội dung vẫn được giữ.",
-        ),
+        composerFailed(state, "Khong the ket noi Tutor. Noi dung van duoc giu."),
       );
     }
   }
@@ -127,7 +182,7 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
     } catch {
       setComposer((state) => ({
         ...state,
-        error: "Chưa thể tạo quiz có căn cứ từ nguồn này.",
+        error: "Chua the tao quiz co can cu tu nguon nay.",
       }));
     } finally {
       setQuizLoadingId(null);
@@ -151,7 +206,7 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
     } catch {
       setComposer((state) => ({
         ...state,
-        error: "Không thể ghi nhận lựa chọn Để sau. Hãy thử lại.",
+        error: "Khong the ghi nhan lua chon de sau. Hay thu lai.",
       }));
     } finally {
       setQuizLoadingId(null);
@@ -160,7 +215,31 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
 
   function resetConversation() {
     setTimeline([]);
+    setAttachments([]);
     setComposer({ draft: "", sending: false, error: null });
+  }
+
+  async function handleAttachmentChange(event: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (files.length === 0) {
+      return;
+    }
+
+    try {
+      const nextAttachments = await Promise.all(files.slice(0, 3).map(createAttachment));
+      setAttachments((current) => [...current, ...nextAttachments].slice(0, 3));
+      setComposer((state) => ({ ...state, error: null }));
+    } catch {
+      setComposer((state) => ({
+        ...state,
+        error: "Khong the doc file dinh kem nay.",
+      }));
+    }
+  }
+
+  function removeAttachment(name: string) {
+    setAttachments((current) => current.filter((item) => item.name !== name));
   }
 
   return (
@@ -172,7 +251,7 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
           </span>
           <div>
             <h2>VLearn Tutor</h2>
-            <p>Trợ lý học theo ngữ cảnh</p>
+            <p>Tro ly hoc theo ngu canh</p>
           </div>
         </div>
         <div className="tutor-header-actions">
@@ -180,8 +259,8 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
             className="icon-button on-dark"
             type="button"
             disabled
-            title="TODO: chờ API lịch sử"
-            aria-label="Mở lịch sử trò chuyện"
+            title="Cho API lich su"
+            aria-label="Mo lich su tro chuyen"
           >
             ↶
           </button>
@@ -189,7 +268,7 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
             className="icon-button on-dark"
             type="button"
             onClick={resetConversation}
-            aria-label="Bắt đầu cuộc trò chuyện mới"
+            aria-label="Bat dau cuoc tro chuyen moi"
           >
             +
           </button>
@@ -197,7 +276,7 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
             className="icon-button on-dark tutor-close"
             type="button"
             onClick={onClose}
-            aria-label="Đóng VLearn Tutor"
+            aria-label="Dong VLearn Tutor"
           >
             ×
           </button>
@@ -207,8 +286,8 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
       <div className="tutor-context">
         <span className="status-dot" aria-hidden="true" />
         {material
-          ? `Ngữ cảnh · Trang ${material.pageNumber}`
-          : "Chưa có ngữ cảnh bài học"}
+          ? `Ngu canh · Trang ${material.pageNumber}`
+          : "Chua co ngu canh bai hoc"}
         {material?.sourceIds.map((sourceId) => (
           <span className="citation-badge" key={sourceId}>
             {sourceId}
@@ -216,13 +295,46 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
         ))}
       </div>
 
+      {(selectedText || attachments.length > 0) && (
+        <div className="agent-context-panel">
+          {selectedText && (
+            <label className="context-block">
+              <span className="eyebrow">Doan dang hoi</span>
+              <textarea
+                rows={3}
+                value={selectedText}
+                onChange={(event) => onSelectedTextChange(event.target.value)}
+              />
+            </label>
+          )}
+          {attachments.length > 0 && (
+            <div className="context-block">
+              <span className="eyebrow">File hoi cung</span>
+              <div className="attachment-list">
+                {attachments.map((attachment) => (
+                  <button
+                    className="attachment-chip"
+                    key={attachment.name}
+                    type="button"
+                    onClick={() => removeAttachment(attachment.name)}
+                  >
+                    <span>{attachment.name}</span>
+                    <strong>{attachment.kind}</strong>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="chat-scroll" aria-live="polite">
         <div className="welcome-card">
           <span className="eyebrow">Adaptive Tutor</span>
-          <h3>Học tiếp theo mức độ bạn hiểu</h3>
+          <h3>Hoi theo dung cho ban dang mac</h3>
           <p>
-            Hỏi tự do về bài học. Tutor có thể tự tạo sơ đồ khi bạn còn rối hoặc
-            đề nghị một câu kiểm tra khi bạn đã sẵn sàng.
+            Doan boi den la ngu canh de agent giai thich. Neu ban muon so do tu duy
+            thi hay noi ro, luc do he thong moi tao mindmap co cau truc.
           </p>
         </div>
 
@@ -234,7 +346,7 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
                 key={item.id}
               >
                 <span className="message-role">
-                  {item.message.role === "student" ? "Bạn" : "Tutor"}
+                  {item.message.role === "student" ? "Ban" : "Tutor"}
                 </span>
                 <p>{item.message.content}</p>
                 <Citations citations={item.message.citations} />
@@ -262,7 +374,7 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
             <span />
             <span />
             <span />
-            Tutor đang phân tích ngữ cảnh
+            Tutor dang phan tich ngu canh
           </div>
         )}
       </div>
@@ -274,9 +386,40 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
             {composer.error}
           </div>
         )}
+
+        <input
+          ref={fileInputRef}
+          className="sr-only"
+          type="file"
+          accept=".pdf,image/*,.txt,.md,.json"
+          multiple
+          onChange={handleAttachmentChange}
+        />
+
+        <div className="composer-tools">
+          <button
+            className="tool-button"
+            type="button"
+            disabled={!material || composer.sending}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <span aria-hidden="true">+</span>
+            Them file hoi cung
+          </button>
+          {selectedText && (
+            <button
+              className="selection-badge"
+              type="button"
+              onClick={() => onSelectedTextChange("")}
+            >
+              Bo doan boi den
+            </button>
+          )}
+        </div>
+
         <div className="composer-row">
           <label className="sr-only" htmlFor="tutor-message">
-            Câu hỏi cho VLearn Tutor
+            Cau hoi cho VLearn Tutor
           </label>
           <textarea
             id="tutor-message"
@@ -284,7 +427,9 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
             value={composer.draft}
             disabled={!material}
             placeholder={
-              material ? "Hỏi về nội dung đang học…" : "Chưa có tài liệu từ API"
+              material
+                ? "Hoi ve noi dung dang hoc, hoac yeu cau tao mindmap neu can..."
+                : "Chua co tai lieu tu API"
             }
             onChange={(event) =>
               setComposer((state) => ({
@@ -304,13 +449,14 @@ export default function Tutor({ api, material, onClose }: TutorProps) {
             className="send-button"
             type="submit"
             disabled={!canSend}
-            aria-label="Gửi câu hỏi"
+            aria-label="Gui cau hoi"
           >
             ↑
           </button>
         </div>
         <p className="composer-note">
-          AI có thể sai. Mọi artifact phải có nguồn hợp lệ trước khi hiển thị.
+          AI co the sai. Mindmap phai la du lieu co cau truc va moi artifact phai co
+          nguon hop le truoc khi hien thi.
         </p>
       </form>
     </aside>

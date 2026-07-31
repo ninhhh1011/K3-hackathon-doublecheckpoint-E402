@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import type { MindmapImageArtifact } from "../reading-assistant.types";
 import type { MindMap, Quiz } from "../types";
 
 function Citations({ citations }: { citations: string[] }) {
@@ -8,9 +9,12 @@ function Citations({ citations }: { citations: string[] }) {
   }
 
   return (
-    <ul className="citations" aria-label="Nguồn tham chiếu">
+    <ul className="flex flex-wrap gap-2" aria-label="Nguon tham chieu">
       {citations.map((citation) => (
-        <li className="citation-badge" key={citation}>
+        <li
+          className="rounded-full border border-slate-200 bg-white/90 px-2.5 py-1 text-[11px] font-medium text-slate-600"
+          key={citation}
+        >
           {citation}
         </li>
       ))}
@@ -25,48 +29,68 @@ export function MindMapCard({ mindmap }: { mindmap: MindMap }) {
 
   return (
     <section
-      className={`artifact-card mindmap-card${expanded ? " is-expanded" : ""}`}
-      aria-label="Mind map do Adaptive Tutor tạo"
+      className={`rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm ${
+        expanded ? "fixed inset-6 z-40 overflow-auto p-6" : "mt-4"
+      }`}
+      aria-label="Mind map do Adaptive Tutor tao"
     >
-      <div className="artifact-heading">
+      <div className="flex items-start justify-between gap-4">
         <div>
-          <span className="eyebrow">Gợi ý theo ngữ cảnh</span>
-          <h3>Sơ đồ để nối lại các ý</h3>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-700">
+            Goi y theo ngu canh
+          </span>
+          <h3 className="mt-2 text-xl font-semibold text-slate-900">
+            So do de noi lai cac y
+          </h3>
         </div>
         <button
-          className="icon-button artifact-expand"
+          className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-slate-100"
           type="button"
-          aria-label={expanded ? "Thu nhỏ mind map" : "Phóng to mind map"}
+          aria-label={expanded ? "Thu nho mind map" : "Phong to mind map"}
           onClick={() => setExpanded((value) => !value)}
         >
-          {expanded ? "×" : "↗"}
+          {expanded ? "x" : "+"}
         </button>
       </div>
 
-      <div className="mindmap-visual">
+      <div className="mt-5 space-y-4">
         {root && (
-          <div className="mindmap-node mindmap-root">
-            <strong>{root.label}</strong>
-            <Citations citations={root.citations} />
+          <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4">
+            <strong className="block text-base text-slate-900">{root.label}</strong>
+            <div className="mt-3">
+              <Citations citations={root.citations} />
+            </div>
           </div>
         )}
-        <div className="mindmap-rail" aria-hidden="true" />
-        <div className="mindmap-branches">
+
+        <div className="grid gap-3 md:grid-cols-2">
           {branches.map((node) => (
-            <div className="mindmap-node" key={node.id}>
-              <span>{node.label}</span>
-              <Citations citations={node.citations} />
+            <div
+              className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4"
+              key={node.id}
+            >
+              <span className="block text-sm font-medium leading-6 text-slate-800">
+                {node.label}
+              </span>
+              <div className="mt-3">
+                <Citations citations={node.citations} />
+              </div>
             </div>
           ))}
         </div>
       </div>
 
       {mindmap.edges.some((edge) => edge.label) && (
-        <ul className="edge-notes" aria-label="Mối liên hệ">
+        <ul className="mt-5 space-y-2 text-sm text-slate-600" aria-label="Moi lien he">
           {mindmap.edges
             .filter((edge) => edge.label)
             .map((edge) => (
-              <li key={`${edge.source}-${edge.target}`}>{edge.label}</li>
+              <li
+                className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-3"
+                key={`${edge.source}-${edge.target}`}
+              >
+                {edge.label}
+              </li>
             ))}
         </ul>
       )}
@@ -84,21 +108,27 @@ export function QuizSuggestion({
   onDecline: () => void;
 }) {
   return (
-    <section className="artifact-card quiz-suggestion">
-      <span className="eyebrow">Bước học tiếp theo</span>
-      <h3>Bạn đã nắm được ý chính</h3>
-      <p>Thử một câu kiểm tra nhanh để chắc rằng kiến thức đã rõ nhé?</p>
-      <div className="artifact-actions">
+    <section className="mt-4 rounded-[1.75rem] border border-amber-100 bg-[radial-gradient(circle_at_top_right,_rgba(251,191,36,0.16),_transparent_40%),_#fffdf8] p-5 shadow-sm">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-700">
+        Bước học tiếp theo
+      </span>
+      <h3 className="mt-2 text-lg font-semibold text-slate-900">
+        Có muốn kiểm tra nhanh không
+      </h3>
+      <p className="mt-2 text-sm leading-6 text-slate-600">
+        Nếu em muốn, mình sẽ tạo 1 câu hỏi ngắn để kiểm tra xem mình đã nắm rõ ý chính chưa.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-3">
         <button
-          className="button button-primary"
+          className="inline-flex items-center justify-center rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
           type="button"
           disabled={loading}
           onClick={onAccept}
         >
-          {loading ? "Đang chuẩn bị…" : "Bắt đầu"}
+          {loading ? "Đang chuẩn bị..." : "Bắt đầu"}
         </button>
         <button
-          className="button button-secondary"
+          className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:text-slate-400"
           type="button"
           disabled={loading}
           onClick={onDecline}
@@ -112,59 +142,108 @@ export function QuizSuggestion({
 
 export function QuizCard({ quiz }: { quiz: Quiz }) {
   const [selected, setSelected] = useState<number | null>(null);
-  const [submitted, setSubmitted] = useState(false);
-  const isCorrect = selected === quiz.correctIndex;
+  const answered = selected !== null;
+  const isCorrect = answered && selected === quiz.correctIndex;
 
   return (
-    <section className="artifact-card quiz-card">
-      <span className="eyebrow">Kiểm tra nhanh</span>
-      <fieldset>
-        <legend>{quiz.question}</legend>
-        <div className="quiz-options">
+    <section className="mt-4 rounded-[1.75rem] border border-emerald-100 bg-[linear-gradient(180deg,#fcfdf8_0%,#f6fbf8_100%)] p-5 shadow-sm">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
+        Kiem tra nhanh
+      </span>
+      <fieldset className="mt-3">
+        <legend className="text-base font-semibold leading-7 text-slate-900">
+          {quiz.question}
+        </legend>
+        <div className="mt-4 space-y-3">
           {quiz.choices.map((choice, index) => (
             <label
-              className={`quiz-option${
-                submitted && index === quiz.correctIndex ? " is-correct" : ""
-              }${
-                submitted && selected === index && !isCorrect
-                  ? " is-incorrect"
-                  : ""
+              className={`flex cursor-pointer items-start gap-3 rounded-[1.25rem] border px-4 py-3 text-sm transition ${
+                answered && index === quiz.correctIndex
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+                  : answered && selected === index
+                    ? "border-rose-300 bg-rose-50 text-rose-900"
+                    : selected === index
+                      ? "border-amber-300 bg-amber-50 text-slate-900"
+                      : "border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50"
               }`}
               key={choice}
             >
               <input
+                className="mt-1 h-4 w-4 accent-emerald-600"
                 type="radio"
                 name={`quiz-${quiz.question}`}
                 checked={selected === index}
-                disabled={submitted}
+                disabled={answered}
                 onChange={() => setSelected(index)}
               />
-              <span className="choice-index">
+              <span
+                className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
+                  answered && index === quiz.correctIndex
+                    ? "bg-emerald-600 text-white"
+                    : answered && selected === index
+                      ? "bg-rose-600 text-white"
+                      : "bg-slate-100 text-slate-700"
+                }`}
+              >
                 {String.fromCharCode(65 + index)}
               </span>
-              <span>{choice}</span>
+              <span className="leading-6">{choice}</span>
             </label>
           ))}
         </div>
       </fieldset>
 
-      {!submitted ? (
-        <button
-          className="button button-primary quiz-submit"
-          type="button"
-          disabled={selected === null}
-          onClick={() => setSubmitted(true)}
-        >
-          Kiểm tra đáp án
-        </button>
-      ) : (
+      {answered && (
         <div
-          className={`quiz-feedback ${isCorrect ? "is-success" : "is-error"}`}
+          className={`mt-4 rounded-[1.25rem] border px-4 py-4 ${
+            isCorrect
+              ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+              : "border-rose-200 bg-rose-50 text-rose-900"
+          }`}
           role="status"
         >
-          <strong>{isCorrect ? "Chính xác" : "Chưa đúng"}</strong>
-          <p>{quiz.explanation}</p>
-          <Citations citations={quiz.citations} />
+          <div className="flex items-center justify-between gap-3">
+            <strong className="text-sm font-semibold">
+              {isCorrect ? "Chinh xac" : "Chua dung"}
+            </strong>
+            {!isCorrect && (
+              <span className="text-xs font-medium text-slate-600">
+                Dap an dung: {String.fromCharCode(65 + quiz.correctIndex)}
+              </span>
+            )}
+          </div>
+          <p className="mt-2 text-sm leading-6">{quiz.explanation}</p>
+          <div className="mt-3">
+            <Citations citations={quiz.citations} />
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+export function MindmapImageCard({
+  artifact,
+}: {
+  artifact: MindmapImageArtifact;
+}) {
+  if (!artifact.imageDataUrl) {
+    return null;
+  }
+
+  return (
+    <section className="mt-4 rounded-[1.75rem] border border-sky-100 bg-[linear-gradient(180deg,#f8fcff_0%,#f2f8ff_100%)] p-4 shadow-sm">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700">
+        Anh mindmap
+      </div>
+      <img
+        className="mt-3 w-full rounded-[1.25rem] border border-slate-200 bg-white object-contain"
+        src={artifact.imageDataUrl}
+        alt="Mindmap tong hop tu noi dung hoi thoai"
+      />
+      {(artifact.note || artifact.model) && (
+        <div className="mt-3 text-xs text-slate-600">
+          {artifact.note || `Model: ${artifact.model}`}
         </div>
       )}
     </section>

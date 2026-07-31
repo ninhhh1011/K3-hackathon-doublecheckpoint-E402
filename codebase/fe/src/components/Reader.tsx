@@ -1,3 +1,7 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+
+import type { ChangeEvent, KeyboardEvent } from "react";
+
 import type { Material } from "../types";
 
 type ReaderProps = {
@@ -5,6 +9,8 @@ type ReaderProps = {
   loading: boolean;
   error: string | null;
   onOpenTutor: () => void;
+  selectedText: string;
+  onSelectedTextChange: (value: string) => void;
 };
 
 export default function Reader({
@@ -12,26 +18,91 @@ export default function Reader({
   loading,
   error,
   onOpenTutor,
+  selectedText,
+  onSelectedTextChange,
 }: ReaderProps) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const selectionInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const controlsDisabled = !material;
+  const canUpload = !loading && !error;
+  const activeDocumentUrl = uploadedUrl ?? material?.documentUrl ?? null;
+  const documentTitle = uploadedFile?.name ?? material?.title ?? "Tai lieu tai len";
+
+  const uploadHint = useMemo(() => {
+    if (uploadedFile) {
+      return `Da chon: ${uploadedFile.name}`;
+    }
+    return "Bam vao noi dung de chon file PDF hoac anh";
+  }, [uploadedFile]);
+
+  useEffect(() => {
+    if (!uploadedFile) {
+      setUploadedUrl(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(uploadedFile);
+    setUploadedUrl(objectUrl);
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
+  }, [uploadedFile]);
+
+  function openFilePicker() {
+    fileInputRef.current?.click();
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const nextFile = event.target.files?.[0] ?? null;
+    setUploadedFile(nextFile);
+    event.target.value = "";
+  }
+
+  function handlePaperKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openFilePicker();
+    }
+  }
+
+  function focusSelectionInput() {
+    selectionInputRef.current?.focus();
+  }
 
   return (
-    <section className="reader" aria-label="Tài liệu bài học">
-      <div className="reader-toolbar" role="toolbar" aria-label="Công cụ đọc">
+    <section className="reader" aria-label="Tai lieu bai hoc">
+      <input
+        ref={fileInputRef}
+        className="sr-only"
+        type="file"
+        accept=".pdf,image/*"
+        onChange={handleFileChange}
+      />
+
+      <div className="reader-toolbar" role="toolbar" aria-label="Cong cu doc">
         <div className="toolbar-group">
           <button
             className="tool-button is-active"
             type="button"
             aria-pressed="true"
+            disabled={!canUpload}
+            onClick={openFilePicker}
           >
             <span aria-hidden="true">⌁</span>
-            Đọc
+            Tai file
           </button>
           <button className="tool-button" type="button" disabled>
             <span aria-hidden="true">✎</span>
-            Bút
+            But
           </button>
-          <button className="tool-button" type="button" disabled>
+          <button
+            className={`tool-button${selectedText ? " is-active" : ""}`}
+            type="button"
+            onClick={focusSelectionInput}
+          >
             <span aria-hidden="true">⌇</span>
             Highlight
           </button>
@@ -40,14 +111,14 @@ export default function Reader({
         <div className="page-context">
           {material
             ? `Trang ${material.pageNumber} / ${material.pageCount}`
-            : "Chưa có trang"}
+            : "Chua co trang"}
         </div>
 
         <div className="toolbar-group zoom-controls">
           <button
             className="icon-button"
             type="button"
-            aria-label="Thu nhỏ"
+            aria-label="Thu nho"
             disabled={controlsDisabled}
           >
             −
@@ -56,7 +127,7 @@ export default function Reader({
           <button
             className="icon-button"
             type="button"
-            aria-label="Phóng to"
+            aria-label="Phong to"
             disabled={controlsDisabled}
           >
             +
@@ -65,12 +136,19 @@ export default function Reader({
       </div>
 
       <div className="reader-stage">
-        <div className="paper">
+        <div
+          className={`paper${canUpload ? " is-uploadable" : ""}`}
+          role={canUpload ? "button" : undefined}
+          tabIndex={canUpload ? 0 : undefined}
+          aria-label={canUpload ? "Chon file tai lieu" : undefined}
+          onClick={canUpload ? openFilePicker : undefined}
+          onKeyDown={canUpload ? handlePaperKeyDown : undefined}
+        >
           {loading && (
             <div className="reader-state" aria-live="polite">
               <div className="loading-orbit" aria-hidden="true" />
-              <h1>Đang tải tài liệu</h1>
-              <p>Reader đang lấy metadata từ API của VLearn.</p>
+              <h1>Dang tai tai lieu</h1>
+              <p>Reader dang lay metadata tu API cua VLearn.</p>
             </div>
           )}
 
@@ -79,7 +157,7 @@ export default function Reader({
               <span className="state-icon error-icon" aria-hidden="true">
                 !
               </span>
-              <h1>Không thể mở tài liệu</h1>
+              <h1>Khong the mo tai lieu</h1>
               <p>{error}</p>
             </div>
           )}
@@ -90,16 +168,17 @@ export default function Reader({
                 ◫
               </span>
               <span className="eyebrow">Reader API-ready</span>
-              <h1>Chưa chọn tài liệu</h1>
+              <h1>Chua chon tai lieu</h1>
               <p>
-                Thêm <code>materialId</code> vào URL để Reader tải đúng nội dung
-                từ API.
+                Them <code>materialId</code> vao URL de Reader tai dung noi dung
+                tu API.
               </p>
-              <code className="url-example">?materialId=…</code>
+              <code className="url-example">?materialId=...</code>
+              <p className="upload-hint">{uploadHint}</p>
             </div>
           )}
 
-          {!loading && !error && material && !material.documentUrl && (
+          {!loading && !error && material && !activeDocumentUrl && (
             <div className="reader-state">
               <span className="state-icon" aria-hidden="true">
                 ◫
@@ -107,18 +186,26 @@ export default function Reader({
               <span className="eyebrow">{material.courseCode}</span>
               <h1>{material.title}</h1>
               <p>
-                Metadata đã sẵn sàng. Backend chưa trả <code>documentUrl</code>{" "}
-                để hiển thị nội dung.
+                Metadata da san sang. Backend chua tra <code>documentUrl</code>{" "}
+                de hien thi noi dung.
               </p>
+              <p className="upload-hint">{uploadHint}</p>
             </div>
           )}
 
-          {!loading && !error && material?.documentUrl && (
-            <iframe
-              className="document-frame"
-              src={material.documentUrl}
-              title={material.title}
-            />
+          {!loading && !error && activeDocumentUrl && (
+            <>
+              <div className="upload-chip" aria-live="polite">
+                <span className="eyebrow">Noi dung</span>
+                <strong>{documentTitle}</strong>
+                <span>{uploadHint}</span>
+              </div>
+              <iframe
+                className="document-frame"
+                src={activeDocumentUrl}
+                title={documentTitle}
+              />
+            </>
           )}
         </div>
 
@@ -126,17 +213,31 @@ export default function Reader({
           className="tutor-handle"
           type="button"
           onClick={onOpenTutor}
-          aria-label="Mở VLearn Tutor"
+          aria-label="Mo VLearn Tutor"
         >
           <span aria-hidden="true">✦</span>
         </button>
+      </div>
+
+      <div className="selection-panel">
+        <div className="selection-copy">
+          <span className="eyebrow">Selection Context</span>
+          <strong>Doan ban muon AI giai thich</strong>
+        </div>
+        <textarea
+          ref={selectionInputRef}
+          rows={3}
+          value={selectedText}
+          placeholder="Dan hoac nhap doan vua boi den de gui cung cau hoi."
+          onChange={(event) => onSelectedTextChange(event.target.value)}
+        />
       </div>
 
       <div className="reader-footer">
         <button
           className="icon-button"
           type="button"
-          aria-label="Trang trước"
+          aria-label="Trang truoc"
           disabled={controlsDisabled || material?.pageNumber === 1}
         >
           ‹

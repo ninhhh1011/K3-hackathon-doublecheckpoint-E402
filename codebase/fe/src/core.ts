@@ -162,12 +162,12 @@ export function validateQuiz(
     !isRecord(value) ||
     !isNonEmptyString(value.question) ||
     !Array.isArray(value.choices) ||
-    value.choices.length !== 3 ||
+    value.choices.length !== 4 ||
     !value.choices.every(isNonEmptyString) ||
-    new Set(value.choices).size !== 3 ||
+    new Set(value.choices).size !== 4 ||
     !Number.isInteger(value.correctIndex) ||
     (value.correctIndex as number) < 0 ||
-    (value.correctIndex as number) > 2 ||
+    (value.correctIndex as number) > 3 ||
     !isNonEmptyString(value.explanation)
   ) {
     return false;

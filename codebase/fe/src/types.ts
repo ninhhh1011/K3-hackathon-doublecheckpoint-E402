@@ -7,6 +7,14 @@ export type ChatMessage = {
   citations: SourceId[];
 };
 
+export type TutorAttachment = {
+  name: string;
+  kind: "image" | "pdf" | "text" | "other";
+  mimeType?: string;
+  textContent?: string;
+  imageDataUrl?: string;
+};
+
 export type MindMapNode = {
   id: string;
   label: string;
@@ -27,8 +35,8 @@ export type MindMap = {
 
 export type Quiz = {
   question: string;
-  choices: [string, string, string];
-  correctIndex: 0 | 1 | 2;
+  choices: [string, string, string, string];
+  correctIndex: 0 | 1 | 2 | 3;
   explanation: string;
   citations: SourceId[];
 };
@@ -68,6 +76,7 @@ export type TutorTurnRequest = {
   sourceIds: SourceId[];
   selectedText?: string;
   message: string;
+  attachments?: TutorAttachment[];
 };
 
 export type QuizRequest = {

@@ -43,7 +43,7 @@ export default function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [leftWidth, setLeftWidth] = useState(56);
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [currentDocument, setCurrentDocument] = useState<File | null>(null);
+  const [, setCurrentDocument] = useState<File | null>(null);
   const dragActive = useRef(false);
 
   useEffect(() => {
@@ -160,7 +160,6 @@ export default function App() {
           message: question,
           pageNumber: currentPage,
           selectedContexts: contextsToSend,
-          currentDocument,
           history: historyForBackend,
           quizRequest,
         },

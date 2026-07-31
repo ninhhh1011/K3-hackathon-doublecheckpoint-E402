@@ -128,6 +128,7 @@ export function createApiClient(baseUrl = "", fetcher: Fetcher = fetch) {
 
 type BackendTraceEvent = {
   type: "node_start" | "node_end" | "tool_call" | "tool_result";
+  event_id?: string;
   node_name?: string;
   payload?: Record<string, unknown>;
 };
@@ -263,10 +264,12 @@ function nodeLabel(name: string): string {
 
 function normalizeTraceEvent(event: BackendTraceEvent): TraceStreamEvent {
   const nodeId = event.node_name ?? "unknown";
+  const eventId = event.event_id ?? `${nodeId}-${Date.now()}-${Math.random()}`;
   if (event.type === "node_start" || event.type === "tool_call") {
     return {
       type: "node_start",
       nodeId,
+      eventId,
       nodeType: event.type === "tool_call" ? "tool_call" : nodeTypeFor(nodeId),
       label: nodeLabel(nodeId),
       payload: {
@@ -281,6 +284,7 @@ function normalizeTraceEvent(event: BackendTraceEvent): TraceStreamEvent {
   return {
     type: event.payload?.status === "error" ? "node_error" : "node_end",
     nodeId,
+    eventId,
     payload: { output: event.payload },
   };
 }
@@ -288,7 +292,7 @@ function normalizeTraceEvent(event: BackendTraceEvent): TraceStreamEvent {
 export function applyTraceEvent(current: TraceStep[], event: TraceStreamEvent): TraceStep[] {
   if (event.type === "node_start") {
     const next: TraceStep = {
-      id: event.nodeId,
+      id: event.eventId,
       nodeType: event.nodeType,
       label: event.label,
       status: "running",
@@ -297,10 +301,10 @@ export function applyTraceEvent(current: TraceStep[], event: TraceStreamEvent): 
       toolName: event.payload?.toolName,
       branchLabel: event.payload?.branchLabel,
     };
-    return [...current.filter((step) => step.id !== event.nodeId), next];
+    return [...current, next];
   }
   return current.map((step) =>
-    step.id === event.nodeId
+    step.id === event.eventId
       ? {
           ...step,
           status: event.type === "node_error" ? "error" : "completed",
@@ -368,16 +372,6 @@ async function buildChatBody(request: ChatStreamRequest) {
         };
       }),
   );
-
-  if (request.currentDocument) {
-    attachments.unshift({
-      name: request.currentDocument.name,
-      kind: "pdf",
-      purpose: "current_document",
-      mime_type: request.currentDocument.type || "application/pdf",
-      file_data_url: await fileToDataUrl(request.currentDocument),
-    });
-  }
 
   return {
     message: request.message,

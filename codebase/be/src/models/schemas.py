@@ -145,6 +145,7 @@ class ChatRequest(BaseModel):
 
 class TraceEvent(BaseModel):
     type: Literal["node_start", "node_end", "tool_call", "tool_result", "message_delta", "final"]
+    event_id: str | None = None
     node_name: str | None = None
     payload: dict[str, Any] = Field(default_factory=dict)
 

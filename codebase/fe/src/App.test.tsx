@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
-import App, { resolveMaterialId } from "./App";
+import App from "./App";
 
 describe("AI Reading Assistant shell", () => {
   it("renders the split reading and trace experience", () => {

@@ -363,18 +363,39 @@ class AgentService:
                     self._trace(
                         "tool_call",
                         "parse_current_slide",
-                        {"tool": "docling", "file_name": document.name, "page_number": page_number},
+                        {
+                            "tool": "docling",
+                            "source_channel": "pdf_viewer",
+                            "purpose": "current_document",
+                            "file_name": document.name,
+                            "page_number": page_number,
+                            "cache_scope": "file_page",
+                        },
                         event_id=parse_slide_trace_id,
                     )
                 )
-            parsed = await self._document_service.parse_attachment(document, page_number)
-            processed_context.append(f"Noi dung slide trang {page_number} tu {document.name}:\n{parsed}")
+            parsed, cached = await self._document_service.parse_attachment_with_cache_status(
+                document,
+                page_number,
+            )
+            processed_context.append(
+                f"Nguon PDF viewer - trang {page_number} tu {document.name}:\n{parsed}"
+            )
             if emit:
                 await emit(
                     self._trace(
                         "tool_result",
                         "parse_current_slide",
-                        {"page_number": page_number, "characters": len(parsed), "preview": parsed[:500]},
+                        {
+                            "source_channel": "pdf_viewer",
+                            "purpose": "current_document",
+                            "file_name": document.name,
+                            "page_number": page_number,
+                            "cached": cached,
+                            "cache_status": "hit" if cached else "miss",
+                            "characters": len(parsed),
+                            "preview": parsed[:500],
+                        },
                         event_id=parse_slide_trace_id,
                     )
                 )
@@ -412,18 +433,34 @@ class AgentService:
                     self._trace(
                         "tool_call",
                         "parse_attached_document",
-                        {"tool": "docling", "file_name": attachment.name},
+                        {
+                            "tool": "docling",
+                            "source_channel": "chat_composer",
+                            "purpose": "attachment",
+                            "file_name": attachment.name,
+                            "cache_scope": "file",
+                        },
                         event_id=parse_attachment_trace_id,
                     )
                 )
-            parsed = await self._document_service.parse_attachment(attachment)
-            processed_context.append(f"Tai lieu dinh kem {attachment.name}:\n{parsed}")
+            parsed, cached = await self._document_service.parse_attachment_with_cache_status(
+                attachment
+            )
+            processed_context.append(f"Nguon file upload trong chat - {attachment.name}:\n{parsed}")
             if emit:
                 await emit(
                     self._trace(
                         "tool_result",
                         "parse_attached_document",
-                        {"file_name": attachment.name, "characters": len(parsed), "preview": parsed[:500]},
+                        {
+                            "source_channel": "chat_composer",
+                            "purpose": "attachment",
+                            "file_name": attachment.name,
+                            "cached": cached,
+                            "cache_status": "hit" if cached else "miss",
+                            "characters": len(parsed),
+                            "preview": parsed[:500],
+                        },
                         event_id=parse_attachment_trace_id,
                     )
                 )
@@ -665,11 +702,28 @@ class AgentService:
         return "\n".join(parts)
 
     def _build_sources(self, payload: ChatRequest) -> list[str]:
+        sources: list[str] = []
         if payload.source_ids:
-            return payload.source_ids[:4]
+            sources.extend(payload.source_ids[:4])
         pages = {payload.page_number} if payload.page_number else set()
         pages.update(context.page_number for context in payload.contexts)
-        return [f"slide-{page}" for page in sorted(pages)]
+        sources.extend(f"slide-{page}" for page in sorted(pages))
+        sources.extend(
+            f"pdf_viewer:{attachment.name}:page-{payload.page_number or 1}"
+            for attachment in payload.attachments
+            if attachment.purpose == "current_document"
+        )
+        sources.extend(
+            f"chat_upload:{attachment.name}"
+            for attachment in payload.attachments
+            if attachment.purpose == "attachment" and attachment.kind != "image"
+        )
+        sources.extend(
+            f"chat_image:{attachment.name}"
+            for attachment in payload.attachments
+            if attachment.purpose == "attachment" and attachment.kind == "image"
+        )
+        return list(dict.fromkeys(sources))[:8]
 
     def _should_generate_quiz(self, payload: ChatRequest) -> bool:
         if self._is_explicit_mindmap_request(payload.message):

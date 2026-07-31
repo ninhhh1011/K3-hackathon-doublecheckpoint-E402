@@ -43,7 +43,7 @@ export default function App() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [leftWidth, setLeftWidth] = useState(56);
   const [theme, setTheme] = useState<"light" | "dark">("light");
-  const [, setCurrentDocument] = useState<File | null>(null);
+  const [currentDocument, setCurrentDocument] = useState<File | null>(null);
   const dragActive = useRef(false);
 
   useEffect(() => {
@@ -129,10 +129,10 @@ export default function App() {
       content:
         question ||
         (quizRequest === "accept"
-          ? "Em muon lam 1 cau hoi kiem tra nhanh."
+          ? "Em muốn làm 1 câu hỏi kiểm tra nhanh."
           : quizRequest === "decline"
-            ? "De sau nhe."
-            : "Giai thich noi dung nay giup em."),
+            ? "Để sau nhé."
+            : "Giải thích nội dung này giúp em."),
       contexts: contextsToSend,
       pageNumber: messagePage,
     };
@@ -160,6 +160,7 @@ export default function App() {
           message: question,
           pageNumber: currentPage,
           selectedContexts: contextsToSend,
+          currentDocument,
           history: historyForBackend,
           quizRequest,
         },
@@ -208,11 +209,11 @@ export default function App() {
       );
     } catch (error) {
       const errorMessage =
-        error instanceof Error ? error.message : "Khong the ket noi API chat.";
+        error instanceof Error ? error.message : "Không thể kết nối API chat.";
       setMessages((current) =>
         current.map((message) =>
           message.id === assistantId
-            ? { ...message, content: `Khong the xu ly cau hoi: ${errorMessage}` }
+            ? { ...message, content: `Không thể xử lý câu hỏi: ${errorMessage}` }
             : message,
         ),
       );
@@ -274,7 +275,7 @@ export default function App() {
                   theme === "dark" ? "text-white" : "text-slate-900"
                 }`}
               >
-                Doc PDF, hoi AI theo ngu canh, xem trace streaming
+                Đọc PDF, hỏi AI theo ngữ cảnh, xem trace streaming
               </h1>
             </div>
           </div>
@@ -290,12 +291,12 @@ export default function App() {
             {theme === "light" ? (
               <>
                 <MoonStar className="h-4 w-4" />
-                Doi theme
+                Đổi theme
               </>
             ) : (
               <>
                 <SunMedium className="h-4 w-4" />
-                Doi theme
+                Đổi theme
               </>
             )}
           </button>
@@ -327,7 +328,7 @@ export default function App() {
           <div className="h-24 w-1 rounded-full bg-slate-300" />
         </div>
 
-        <div className="relative min-h-0 min-w-0 flex-1 border-t border-slate-200 lg:border-t-0 lg:border-l">
+        <div className="relative min-h-0 min-w-0 flex-1 overflow-hidden border-t border-slate-200 lg:border-t-0 lg:border-l">
           <ChatPanel
             activePage={activeContextPage}
             messages={messages}

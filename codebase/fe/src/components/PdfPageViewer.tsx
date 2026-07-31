@@ -94,7 +94,7 @@ export default function PdfPageViewer({
           renderTextLayer
           loading={
             <div className="flex min-h-[800px] items-center justify-center text-sm text-slate-500">
-              Dang tai trang PDF...
+              Đang tải trang PDF...
             </div>
           }
         />

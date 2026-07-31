@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import hashlib
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -14,12 +15,38 @@ class DocumentService:
         self._docling_converter: Any | None = None
         self._docling_init_lock = asyncio.Lock()
         self._docling_convert_lock = asyncio.Lock()
+        self._parse_cache: dict[str, str] = {}
+        self._parse_cache_lock = asyncio.Lock()
 
     async def warmup(self) -> None:
         converter = await self._ensure_docling_converter()
         await asyncio.to_thread(converter.initialize_pipeline, self._docling_input_format())
 
     async def parse_attachment(
+        self,
+        attachment: TutorAttachment,
+        page_number: int | None = None,
+    ) -> str:
+        text, _ = await self.parse_attachment_with_cache_status(attachment, page_number)
+        return text
+
+    async def parse_attachment_with_cache_status(
+        self,
+        attachment: TutorAttachment,
+        page_number: int | None = None,
+    ) -> tuple[str, bool]:
+        cache_key = self._build_parse_cache_key(attachment, page_number)
+        async with self._parse_cache_lock:
+            cached = self._parse_cache.get(cache_key)
+        if cached is not None:
+            return cached, True
+
+        parsed = await self._parse_attachment_uncached(attachment, page_number)
+        async with self._parse_cache_lock:
+            self._parse_cache[cache_key] = parsed
+        return parsed, False
+
+    async def _parse_attachment_uncached(
         self,
         attachment: TutorAttachment,
         page_number: int | None = None,
@@ -70,6 +97,23 @@ class DocumentService:
             except Exception:
                 logger.exception("Docling conversion failed for attachment %s", attachment.name)
                 return self._build_empty_docling_result_message(attachment, page_number)
+
+    def _build_parse_cache_key(
+        self,
+        attachment: TutorAttachment,
+        page_number: int | None,
+    ) -> str:
+        content = attachment.file_data_url or attachment.text_content or ""
+        digest = hashlib.sha256(content.encode("utf-8", errors="ignore")).hexdigest()
+        return "|".join(
+            [
+                attachment.name,
+                attachment.kind,
+                attachment.mime_type or "",
+                str(page_number or "all"),
+                digest,
+            ]
+        )
 
     def describe_image(self, attachment: TutorAttachment) -> str:
         return (
@@ -161,4 +205,3 @@ class DocumentService:
             return base64.b64decode(encoded, validate=True)
         except (ValueError, base64.binascii.Error) as exc:
             raise ValueError("file_data_url không phải data URL base64 hợp lệ.") from exc
-

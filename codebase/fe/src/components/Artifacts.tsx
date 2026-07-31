@@ -9,7 +9,7 @@ function Citations({ citations }: { citations: string[] }) {
   }
 
   return (
-    <ul className="flex flex-wrap gap-2" aria-label="Nguon tham chieu">
+    <ul className="flex flex-wrap gap-2" aria-label="Nguồn tham chiếu">
       {citations.map((citation) => (
         <li
           className="rounded-full border border-slate-200 bg-white/90 px-2.5 py-1 text-[11px] font-medium text-slate-600"
@@ -32,21 +32,21 @@ export function MindMapCard({ mindmap }: { mindmap: MindMap }) {
       className={`rounded-[1.75rem] border border-slate-200 bg-white p-5 shadow-sm ${
         expanded ? "fixed inset-6 z-40 overflow-auto p-6" : "mt-4"
       }`}
-      aria-label="Mind map do Adaptive Tutor tao"
+      aria-label="Mind map do Adaptive Tutor tạo"
     >
       <div className="flex items-start justify-between gap-4">
         <div>
           <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-amber-700">
-            Goi y theo ngu canh
+            Gợi ý theo ngữ cảnh
           </span>
           <h3 className="mt-2 text-xl font-semibold text-slate-900">
-            So do de noi lai cac y
+            Sơ đồ để nối lại các ý
           </h3>
         </div>
         <button
           className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 transition hover:bg-slate-100"
           type="button"
-          aria-label={expanded ? "Thu nho mind map" : "Phong to mind map"}
+          aria-label={expanded ? "Thu nhỏ mind map" : "Phóng to mind map"}
           onClick={() => setExpanded((value) => !value)}
         >
           {expanded ? "x" : "+"}
@@ -81,7 +81,7 @@ export function MindMapCard({ mindmap }: { mindmap: MindMap }) {
       </div>
 
       {mindmap.edges.some((edge) => edge.label) && (
-        <ul className="mt-5 space-y-2 text-sm text-slate-600" aria-label="Moi lien he">
+        <ul className="mt-5 space-y-2 text-sm text-slate-600" aria-label="Mối liên hệ">
           {mindmap.edges
             .filter((edge) => edge.label)
             .map((edge) => (
@@ -148,7 +148,7 @@ export function QuizCard({ quiz }: { quiz: Quiz }) {
   return (
     <section className="mt-4 rounded-[1.75rem] border border-emerald-100 bg-[linear-gradient(180deg,#fcfdf8_0%,#f6fbf8_100%)] p-5 shadow-sm">
       <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-700">
-        Kiem tra nhanh
+        Kiểm tra nhanh
       </span>
       <fieldset className="mt-3">
         <legend className="text-base font-semibold leading-7 text-slate-900">
@@ -204,11 +204,11 @@ export function QuizCard({ quiz }: { quiz: Quiz }) {
         >
           <div className="flex items-center justify-between gap-3">
             <strong className="text-sm font-semibold">
-              {isCorrect ? "Chinh xac" : "Chua dung"}
+              {isCorrect ? "Chính xác" : "Chưa đúng"}
             </strong>
             {!isCorrect && (
               <span className="text-xs font-medium text-slate-600">
-                Dap an dung: {String.fromCharCode(65 + quiz.correctIndex)}
+                Đáp án đúng: {String.fromCharCode(65 + quiz.correctIndex)}
               </span>
             )}
           </div>
@@ -234,12 +234,12 @@ export function MindmapImageCard({
   return (
     <section className="mt-4 rounded-[1.75rem] border border-sky-100 bg-[linear-gradient(180deg,#f8fcff_0%,#f2f8ff_100%)] p-4 shadow-sm">
       <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-700">
-        Anh mindmap
+        Ảnh mindmap
       </div>
       <img
         className="mt-3 w-full rounded-[1.25rem] border border-slate-200 bg-white object-contain"
         src={artifact.imageDataUrl}
-        alt="Mindmap tong hop tu noi dung hoi thoai"
+        alt="Mindmap tổng hợp từ nội dung hội thoại"
       />
       {(artifact.note || artifact.model) && (
         <div className="mt-3 text-xs text-slate-600">

@@ -28,13 +28,13 @@ export default function Reader({
   const controlsDisabled = !material;
   const canUpload = !loading && !error;
   const activeDocumentUrl = uploadedUrl ?? material?.documentUrl ?? null;
-  const documentTitle = uploadedFile?.name ?? material?.title ?? "Tai lieu tai len";
+  const documentTitle = uploadedFile?.name ?? material?.title ?? "Tài liệu tải lên";
 
   const uploadHint = useMemo(() => {
     if (uploadedFile) {
-      return `Da chon: ${uploadedFile.name}`;
+      return `Đã chọn: ${uploadedFile.name}`;
     }
-    return "Bam vao noi dung de chon file PDF hoac anh";
+    return "Bấm vào nội dung để chọn file PDF hoặc ảnh";
   }, [uploadedFile]);
 
   useEffect(() => {
@@ -73,7 +73,7 @@ export default function Reader({
   }
 
   return (
-    <section className="reader" aria-label="Tai lieu bai hoc">
+    <section className="reader" aria-label="Tài liệu bài học">
       <input
         ref={fileInputRef}
         className="sr-only"
@@ -82,7 +82,7 @@ export default function Reader({
         onChange={handleFileChange}
       />
 
-      <div className="reader-toolbar" role="toolbar" aria-label="Cong cu doc">
+      <div className="reader-toolbar" role="toolbar" aria-label="Công cụ đọc">
         <div className="toolbar-group">
           <button
             className="tool-button is-active"
@@ -92,11 +92,11 @@ export default function Reader({
             onClick={openFilePicker}
           >
             <span aria-hidden="true">⌁</span>
-            Tai file
+            Tải file
           </button>
           <button className="tool-button" type="button" disabled>
             <span aria-hidden="true">✎</span>
-            But
+            Bút
           </button>
           <button
             className={`tool-button${selectedText ? " is-active" : ""}`}
@@ -111,14 +111,14 @@ export default function Reader({
         <div className="page-context">
           {material
             ? `Trang ${material.pageNumber} / ${material.pageCount}`
-            : "Chua co trang"}
+            : "Chưa có trang"}
         </div>
 
         <div className="toolbar-group zoom-controls">
           <button
             className="icon-button"
             type="button"
-            aria-label="Thu nho"
+            aria-label="Thu nhỏ"
             disabled={controlsDisabled}
           >
             −
@@ -127,7 +127,7 @@ export default function Reader({
           <button
             className="icon-button"
             type="button"
-            aria-label="Phong to"
+            aria-label="Phóng to"
             disabled={controlsDisabled}
           >
             +
@@ -140,15 +140,15 @@ export default function Reader({
           className={`paper${canUpload ? " is-uploadable" : ""}`}
           role={canUpload ? "button" : undefined}
           tabIndex={canUpload ? 0 : undefined}
-          aria-label={canUpload ? "Chon file tai lieu" : undefined}
+          aria-label={canUpload ? "Chọn file tài liệu" : undefined}
           onClick={canUpload ? openFilePicker : undefined}
           onKeyDown={canUpload ? handlePaperKeyDown : undefined}
         >
           {loading && (
             <div className="reader-state" aria-live="polite">
               <div className="loading-orbit" aria-hidden="true" />
-              <h1>Dang tai tai lieu</h1>
-              <p>Reader dang lay metadata tu API cua VLearn.</p>
+              <h1>Đang tải tài liệu</h1>
+              <p>Reader đang lấy metadata từ API của VLearn.</p>
             </div>
           )}
 
@@ -157,7 +157,7 @@ export default function Reader({
               <span className="state-icon error-icon" aria-hidden="true">
                 !
               </span>
-              <h1>Khong the mo tai lieu</h1>
+              <h1>Không thể mở tài liệu</h1>
               <p>{error}</p>
             </div>
           )}
@@ -168,10 +168,10 @@ export default function Reader({
                 ◫
               </span>
               <span className="eyebrow">Reader API-ready</span>
-              <h1>Chua chon tai lieu</h1>
+              <h1>Chưa chọn tài liệu</h1>
               <p>
-                Them <code>materialId</code> vao URL de Reader tai dung noi dung
-                tu API.
+                Thêm <code>materialId</code> vào URL để Reader tải đúng nội dung
+                từ API.
               </p>
               <code className="url-example">?materialId=...</code>
               <p className="upload-hint">{uploadHint}</p>
@@ -186,8 +186,8 @@ export default function Reader({
               <span className="eyebrow">{material.courseCode}</span>
               <h1>{material.title}</h1>
               <p>
-                Metadata da san sang. Backend chua tra <code>documentUrl</code>{" "}
-                de hien thi noi dung.
+                Metadata đã sẵn sàng. Backend chưa trả <code>documentUrl</code>{" "}
+                để hiển thị nội dung.
               </p>
               <p className="upload-hint">{uploadHint}</p>
             </div>
@@ -196,7 +196,7 @@ export default function Reader({
           {!loading && !error && activeDocumentUrl && (
             <>
               <div className="upload-chip" aria-live="polite">
-                <span className="eyebrow">Noi dung</span>
+                <span className="eyebrow">Nội dung</span>
                 <strong>{documentTitle}</strong>
                 <span>{uploadHint}</span>
               </div>
@@ -213,7 +213,7 @@ export default function Reader({
           className="tutor-handle"
           type="button"
           onClick={onOpenTutor}
-          aria-label="Mo VLearn Tutor"
+          aria-label="Mở VLearn Tutor"
         >
           <span aria-hidden="true">✦</span>
         </button>
@@ -222,13 +222,13 @@ export default function Reader({
       <div className="selection-panel">
         <div className="selection-copy">
           <span className="eyebrow">Selection Context</span>
-          <strong>Doan ban muon AI giai thich</strong>
+          <strong>Đoạn bạn muốn AI giải thích</strong>
         </div>
         <textarea
           ref={selectionInputRef}
           rows={3}
           value={selectedText}
-          placeholder="Dan hoac nhap doan vua boi den de gui cung cau hoi."
+          placeholder="Dán hoặc nhập đoạn vừa bôi đen để gửi cùng câu hỏi."
           onChange={(event) => onSelectedTextChange(event.target.value)}
         />
       </div>
@@ -237,7 +237,7 @@ export default function Reader({
         <button
           className="icon-button"
           type="button"
-          aria-label="Trang truoc"
+          aria-label="Trang trước"
           disabled={controlsDisabled || material?.pageNumber === 1}
         >
           ‹

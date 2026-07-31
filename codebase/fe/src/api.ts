@@ -373,6 +373,16 @@ async function buildChatBody(request: ChatStreamRequest) {
       }),
   );
 
+  if (request.currentDocument) {
+    attachments.unshift({
+      name: request.currentDocument.name,
+      kind: "pdf",
+      purpose: "current_document",
+      mime_type: request.currentDocument.type || "application/pdf",
+      file_data_url: await fileToDataUrl(request.currentDocument),
+    });
+  }
+
   return {
     message: request.message,
     stream: true,

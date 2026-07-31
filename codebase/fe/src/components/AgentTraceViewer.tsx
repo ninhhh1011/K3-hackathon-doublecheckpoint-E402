@@ -35,7 +35,7 @@ export default function AgentTraceViewer({
               Agent Trace
             </h3>
             <p className="text-xs text-slate-500">
-              Luong planner, retrieval, tool call va generation
+              Luồng planner, retrieval, tool call và generation
             </p>
           </div>
         </div>
@@ -50,7 +50,7 @@ export default function AgentTraceViewer({
             ) : (
               <ChevronDown className="h-4 w-4" />
             )}
-            {expandAll ? "Thu gon" : "Mo rong"}
+            {expandAll ? "Thu gọn" : "Mở rộng"}
           </button>
           <button
             className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900"
@@ -58,7 +58,7 @@ export default function AgentTraceViewer({
             onClick={onToggleHidden}
           >
             {hidden ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            {hidden ? "Hien trace" : "An trace"}
+            {hidden ? "Hiện trace" : "Ẩn trace"}
           </button>
         </div>
       </header>
@@ -67,7 +67,7 @@ export default function AgentTraceViewer({
         <div className="trace-scrollbar min-h-0 flex-1 overflow-y-auto px-4 py-4">
           {steps.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-4 py-8 text-center text-sm text-slate-500">
-              Chua co trace. Gui cau hoi de xem timeline streaming.
+              Chưa có trace. Gửi câu hỏi để xem timeline streaming.
             </div>
           ) : (
             <div className="grid gap-4">

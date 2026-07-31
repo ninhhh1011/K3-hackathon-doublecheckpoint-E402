@@ -155,7 +155,7 @@ export default function Tutor({
       setAttachments([]);
     } catch {
       setComposer((state) =>
-        composerFailed(state, "Khong the ket noi Tutor. Noi dung van duoc giu."),
+        composerFailed(state, "Không thể kết nối Tutor. Nội dung vẫn được giữ."),
       );
     }
   }
@@ -182,7 +182,7 @@ export default function Tutor({
     } catch {
       setComposer((state) => ({
         ...state,
-        error: "Chua the tao quiz co can cu tu nguon nay.",
+        error: "Chưa thể tạo quiz có căn cứ từ nguồn này.",
       }));
     } finally {
       setQuizLoadingId(null);
@@ -206,7 +206,7 @@ export default function Tutor({
     } catch {
       setComposer((state) => ({
         ...state,
-        error: "Khong the ghi nhan lua chon de sau. Hay thu lai.",
+        error: "Không thể ghi nhận lựa chọn để sau. Hãy thử lại.",
       }));
     } finally {
       setQuizLoadingId(null);
@@ -233,7 +233,7 @@ export default function Tutor({
     } catch {
       setComposer((state) => ({
         ...state,
-        error: "Khong the doc file dinh kem nay.",
+        error: "Không thể đọc file đính kèm này.",
       }));
     }
   }
@@ -251,7 +251,7 @@ export default function Tutor({
           </span>
           <div>
             <h2>VLearn Tutor</h2>
-            <p>Tro ly hoc theo ngu canh</p>
+            <p>Trợ lý học theo ngữ cảnh</p>
           </div>
         </div>
         <div className="tutor-header-actions">
@@ -259,8 +259,8 @@ export default function Tutor({
             className="icon-button on-dark"
             type="button"
             disabled
-            title="Cho API lich su"
-            aria-label="Mo lich su tro chuyen"
+            title="Chờ API lịch sử"
+            aria-label="Mở lịch sử trò chuyện"
           >
             ↶
           </button>
@@ -268,7 +268,7 @@ export default function Tutor({
             className="icon-button on-dark"
             type="button"
             onClick={resetConversation}
-            aria-label="Bat dau cuoc tro chuyen moi"
+            aria-label="Bắt đầu cuộc trò chuyện mới"
           >
             +
           </button>
@@ -276,7 +276,7 @@ export default function Tutor({
             className="icon-button on-dark tutor-close"
             type="button"
             onClick={onClose}
-            aria-label="Dong VLearn Tutor"
+            aria-label="Đóng VLearn Tutor"
           >
             ×
           </button>
@@ -287,7 +287,7 @@ export default function Tutor({
         <span className="status-dot" aria-hidden="true" />
         {material
           ? `Ngu canh · Trang ${material.pageNumber}`
-          : "Chua co ngu canh bai hoc"}
+          : "Chưa có ngữ cảnh bài học"}
         {material?.sourceIds.map((sourceId) => (
           <span className="citation-badge" key={sourceId}>
             {sourceId}
@@ -299,7 +299,7 @@ export default function Tutor({
         <div className="agent-context-panel">
           {selectedText && (
             <label className="context-block">
-              <span className="eyebrow">Doan dang hoi</span>
+              <span className="eyebrow">Đoạn đang hỏi</span>
               <textarea
                 rows={3}
                 value={selectedText}
@@ -309,7 +309,7 @@ export default function Tutor({
           )}
           {attachments.length > 0 && (
             <div className="context-block">
-              <span className="eyebrow">File hoi cung</span>
+              <span className="eyebrow">File hỏi cùng</span>
               <div className="attachment-list">
                 {attachments.map((attachment) => (
                   <button
@@ -331,10 +331,10 @@ export default function Tutor({
       <div className="chat-scroll" aria-live="polite">
         <div className="welcome-card">
           <span className="eyebrow">Adaptive Tutor</span>
-          <h3>Hoi theo dung cho ban dang mac</h3>
+          <h3>Hỏi theo đúng chỗ bạn đang mắc</h3>
           <p>
-            Doan boi den la ngu canh de agent giai thich. Neu ban muon so do tu duy
-            thi hay noi ro, luc do he thong moi tao mindmap co cau truc.
+            Đoạn bôi đen là ngữ cảnh để agent giải thích. Nếu bạn muốn sơ đồ tư duy
+            thì hãy nói rõ, lúc đó hệ thống mới tạo mindmap có cấu trúc.
           </p>
         </div>
 
@@ -346,7 +346,7 @@ export default function Tutor({
                 key={item.id}
               >
                 <span className="message-role">
-                  {item.message.role === "student" ? "Ban" : "Tutor"}
+                  {item.message.role === "student" ? "Bạn" : "Tutor"}
                 </span>
                 <p>{item.message.content}</p>
                 <Citations citations={item.message.citations} />
@@ -374,7 +374,7 @@ export default function Tutor({
             <span />
             <span />
             <span />
-            Tutor dang phan tich ngu canh
+            Tutor đang phân tích ngữ cảnh
           </div>
         )}
       </div>
@@ -404,7 +404,7 @@ export default function Tutor({
             onClick={() => fileInputRef.current?.click()}
           >
             <span aria-hidden="true">+</span>
-            Them file hoi cung
+            Thêm file hỏi cùng
           </button>
           {selectedText && (
             <button
@@ -412,14 +412,14 @@ export default function Tutor({
               type="button"
               onClick={() => onSelectedTextChange("")}
             >
-              Bo doan boi den
+              Bỏ đoạn bôi đen
             </button>
           )}
         </div>
 
         <div className="composer-row">
           <label className="sr-only" htmlFor="tutor-message">
-            Cau hoi cho VLearn Tutor
+            Câu hỏi cho VLearn Tutor
           </label>
           <textarea
             id="tutor-message"
@@ -428,8 +428,8 @@ export default function Tutor({
             disabled={!material}
             placeholder={
               material
-                ? "Hoi ve noi dung dang hoc, hoac yeu cau tao mindmap neu can..."
-                : "Chua co tai lieu tu API"
+                ? "Hỏi về nội dung đang học, hoặc yêu cầu tạo mindmap nếu cần..."
+                : "Chưa có tài liệu từ API"
             }
             onChange={(event) =>
               setComposer((state) => ({
@@ -449,14 +449,14 @@ export default function Tutor({
             className="send-button"
             type="submit"
             disabled={!canSend}
-            aria-label="Gui cau hoi"
+            aria-label="Gửi câu hỏi"
           >
             ↑
           </button>
         </div>
         <p className="composer-note">
-          AI co the sai. Mindmap phai la du lieu co cau truc va moi artifact phai co
-          nguon hop le truoc khi hien thi.
+          AI có thể sai. Mindmap phải là dữ liệu có cấu trúc và mỗi artifact phải có
+          nguồn hợp lệ trước khi hiển thị.
         </p>
       </form>
     </aside>

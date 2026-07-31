@@ -381,7 +381,7 @@ export default function TraceNode({
                             ))
                           ) : (
                             <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-500">
-                              Khong co ket qua qua threshold.
+                              Không có kết quả qua threshold.
                             </div>
                           )}
                         </div>

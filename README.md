@@ -2,8 +2,45 @@
 
 **SPEC → Prototype → Demo.** Đây không phải cuộc thi code — đây là cuộc thi **tư duy sản phẩm AI**.
 
+## Nhóm VLearn Adaptive Tutor
+
+| Thành viên | Mã học viên | Vai trò | Phần việc |
+|---|---|---|---|
+| Nguyễn Văn Ninh | 2A202601419 | Product/Data | Canvas, JTBD, mining evidence, spec, validation và demo |
+| Nguyễn Đoàn Tiến Anh | 2A202601509 | Tech/Eval | Frontend/backend, agent tools, golden set, eval và vận hành demo |
+
+### Chạy prototype
+
+Backend:
+
+```powershell
+cd codebase\be
+uv sync --extra dev
+uv run uvicorn main:app --reload
+```
+
+Frontend, trong terminal khác:
+
+```powershell
+cd codebase\fe
+npm.cmd install
+npm.cmd run dev
+```
+
+Mở `http://127.0.0.1:5173`, upload một PDF, bôi đen đoạn cần hỏi rồi gửi câu
+hỏi trong Tutor. Backend đọc `OPENAI_API_KEY` từ `codebase/be/.env`; không đặt
+API key trong frontend hoặc commit `.env`.
+
+### Phạm vi prototype
+
+- Chạy thật: OpenAI chat và guardrail, PDF text layer, selected context, chat
+  streaming và quiz workflow.
+- Mind map đã có dispatch/tool nhưng ảnh phụ thuộc Gemini hoặc remote image API;
+  endpoint remote hiện chưa ổn định. RAG cần database và embedding model tương ứng.
+- Fallback khi thiếu API key không được tính là một lượt gọi AI thật.
+
 - Thời lượng: **1,5 ngày** (một ngày build + một buổi demo)
-- Nhóm: **4-5 người** · zone tối đa 5 nhóm · thi theo lớp
+- Quy mô theo đề gốc: **4-5 người**; nhóm nộp thực tế gồm **2 người**.
 
 ## Bắt đầu từ đâu?
 

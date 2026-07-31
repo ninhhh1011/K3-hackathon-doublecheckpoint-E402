@@ -9,8 +9,10 @@ dependencies = [
     "pydantic-settings>=2.10.0",
     "python-dotenv>=1.1.0",
     "openai>=2.0.0",
+    "langchain>=1.0.0",
     "langchain-openai>=0.3.0",
     "google-genai>=1.30.0",
+    "numpy>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -35,4 +37,3 @@ testpaths = ["tests"]
 [build-system]
 requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
-
